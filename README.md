@@ -12,6 +12,18 @@ npx skills add /path/to/this/repo
 npx skills add /path/to/this/repo -g --skill zereight-review -y
 ```
 
+## Update
+
+Skills are updated continuously. To get the latest version:
+
+```bash
+# Pull latest changes
+git -C /path/to/this/repo pull
+
+# Reinstall skills
+npx skills add /path/to/this/repo -g --skill zereight-review -y
+```
+
 ## Skills
 
 ### `zereight-review`
