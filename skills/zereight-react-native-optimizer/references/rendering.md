@@ -6,7 +6,7 @@ Reference: `react-native-best-practices`, `vercel-react-native-skills`
 
 ## 1. FlatList → FlashList for Large Lists
 
-**문제:** FlatList는 50개 이상 아이템에서 스크롤 성능 저하 (JS thread에서 window 계산)
+**Problem:** FlatList degrades scroll performance with 50+ items (window calculation runs on the JS thread)
 
 ```tsx
 // 🔴 Bad
@@ -24,14 +24,14 @@ import { FlashList } from '@shopify/flash-list'
 />
 ```
 
-**원칙:** 아이템 수가 동적이거나 50개 이상 가능성이 있으면 FlashList를 사용한다.
+**Principle:** Use FlashList when item count is dynamic or could exceed 50.
 **Severity:** 🛠️ 🟠 Major
 
 ---
 
 ## 2. keyExtractor returning index
 
-**문제:** index 기반 key는 아이템 순서 변경 시 전체 재렌더를 유발한다.
+**Problem:** Index-based keys cause a full re-render when item order changes.
 
 ```tsx
 // 🔴 Bad
@@ -41,14 +41,14 @@ keyExtractor={(item, index) => index.toString()}
 keyExtractor={(item) => item.id}
 ```
 
-**원칙:** 안정적인 고유 ID를 key로 사용한다. ID가 없으면 복합키(`${item.type}-${item.createdAt}`)를 만든다.
+**Principle:** Use a stable unique ID as the key. If no ID exists, construct a composite key (`${item.type}-${item.createdAt}`).
 **Severity:** ⚠️ 🟡 Minor
 
 ---
 
 ## 3. Inline function/object as prop to memoized child
 
-**문제:** 매 렌더마다 새 참조가 생성되어 `React.memo`가 무효화된다.
+**Problem:** A new reference is created on every render, invalidating `React.memo`.
 
 ```tsx
 // 🔴 Bad — new function reference on every render
@@ -67,14 +67,14 @@ const itemStyle = useMemo(() => ({ marginBottom: 8 }), [])
 <TransactionItem onPress={handleItemPress} style={itemStyle} />
 ```
 
-**원칙:** memoized 컴포넌트에 전달하는 함수/객체는 `useCallback`/`useMemo`로 안정화한다.
+**Principle:** Stabilize functions/objects passed to memoized components with `useCallback`/`useMemo`.
 **Severity:** 🛠️ 🟡 Minor
 
 ---
 
 ## 4. React.memo on component receiving unstable props
 
-**문제:** `React.memo`를 써도 부모가 매 렌더마다 새 객체/함수를 props로 넘기면 항상 리렌더된다.
+**Problem:** Even with `React.memo`, if the parent passes a new object/function on every render, the child always re-renders.
 
 ```tsx
 // 🔴 Bad — memo is useless here
@@ -87,14 +87,14 @@ const Item = React.memo(({ style, onPress }) => ...)
 // ✅ Good — stabilize at call site (see pattern 3)
 ```
 
-**원칙:** `React.memo` 적용 후 props 안정성도 함께 검토한다. memo만 추가하고 call site를 고치지 않으면 효과 없음.
+**Principle:** After applying `React.memo`, also review prop stability at the call site. Adding memo without fixing the call site has no effect.
 **Severity:** ⚠️ 🟡 Minor
 
 ---
 
 ## 5. Context provider scope too wide
 
-**문제:** 자주 바뀌는 값을 가진 Context가 앱 루트 근처에 있으면 하위 전체가 리렌더된다.
+**Problem:** A Context with a frequently changing value near the app root causes the entire subtree to re-render.
 
 ```tsx
 // 🔴 Bad — ThemeContext changes on every user interaction
@@ -110,14 +110,14 @@ const Item = React.memo(({ style, onPress }) => ...)
 </ThemeContext.Provider>
 ```
 
-**원칙:** Context value가 렌더마다 새 객체면 반드시 `useMemo`로 감싸거나 stable/unstable로 분리한다.
+**Principle:** If the Context value is a new object on every render, wrap it with `useMemo` or split it into stable/unstable parts.
 **Severity:** ⚠️ 🟠 Major
 
 ---
 
 ## 6. StyleSheet defined inside component body
 
-**문제:** 컴포넌트 함수 내부의 `StyleSheet.create()`는 매 렌더마다 새 객체를 생성한다.
+**Problem:** `StyleSheet.create()` inside a component function creates a new object on every render.
 
 ```tsx
 // 🔴 Bad
@@ -138,15 +138,15 @@ function TransactionItem() {
 }
 ```
 
-**원칙:** `StyleSheet.create()`는 항상 컴포넌트 외부 모듈 스코프에 둔다.
-단, 테마/다크모드 기반 동적 스타일은 예외 — `useMemo`로 감싼다.
+**Principle:** Always place `StyleSheet.create()` at module scope outside the component.
+Exception: dynamic styles based on theme/dark mode — wrap with `useMemo`.
 **Severity:** 🛠️ 🟡 Minor
 
 ---
 
 ## 7. useSelector selecting large store slice
 
-**문제:** `useSelector`가 크고 자주 바뀌는 slice를 선택하면 불필요한 리렌더가 발생한다.
+**Problem:** `useSelector` selecting a large, frequently changing slice causes unnecessary re-renders.
 
 ```ts
 // 🔴 Bad
@@ -158,5 +158,5 @@ const items = useSelector(state => state.transactions.items)
 const isLoading = useSelector(state => state.transactions.isLoading)
 ```
 
-**원칙:** selector는 컴포넌트가 실제로 사용하는 최소 데이터만 선택한다. `reselect`의 `createSelector`로 파생 데이터를 메모이제이션한다.
+**Principle:** Select only the minimum data the component actually uses. Memoize derived data with `reselect`'s `createSelector`.
 **Severity:** 🛠️ 🔵 Trivial
