@@ -30,7 +30,8 @@ Use this skill when:
 3. State consistency & async timing
 4. API contract/type safety
 5. Performance hotspots
-6. Maintainability/readability
+6. Clean code (naming, structure, component design)
+7. Maintainability/readability
 
 ## Mandatory logic checks (always run)
 
@@ -58,6 +59,18 @@ Use this skill when:
    - Check stale closure/state usage.
    - Verify open/close/reset/submit/error ordering.
    - Ensure loading flags recover in all paths.
+
+## Clean code checks (run after logic checks)
+
+After mandatory logic checks, scan for clean code issues. See `references/clean-code.md` for full detail.
+
+Key areas:
+- **Naming**: intention-revealing, consistent vocabulary, no misleading names
+- **Functions**: single responsibility, no flag arguments, no side effects in getters
+- **React/TS**: prop explosion, render-in-render, `any` usage, hook naming, effect scope
+- **React Native**: StyleSheet outside component, inline styles in hot paths, raw primitives instead of design system components
+
+Report clean code findings as 🔵 Trivial or 🟡 Minor only. Never block a merge for clean code alone.
 
 ## Case matrix requirement
 
