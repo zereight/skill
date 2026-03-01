@@ -8,6 +8,50 @@ description: Comprehensive code review skill for practical PR feedback. Use for 
 Prioritize **correctness and risk** over style nitpicks.
 Default tone: concise, direct, actionable.
 
+## Workflow — always follow this sequence
+
+### Step 1: Fetch and diff against origin/develop
+
+Before reading any file, run:
+
+```bash
+git fetch origin
+git diff origin/develop...HEAD --stat
+git diff origin/develop...HEAD
+```
+
+- Use `--stat` first to get the full list of changed files.
+- Then read the full diff to understand every change.
+- If the branch is behind origin/develop, note it but still proceed with the diff.
+
+### Step 2: Understand codebase context
+
+Before evaluating any finding, understand the domain and conventions:
+
+- Read `CLAUDE.md` or `LLM.md` at the repo root if present — these define project-wide conventions.
+- Identify the feature domain (auth, transfer, account, etc.) and apply domain-appropriate risk weighting:
+  - Payment/auth flows → higher severity bar
+  - UI-only changes → lower severity bar
+- Check what design system components, hook wrappers, and DI patterns are in use.
+- Note any existing patterns in nearby unchanged files to distinguish "new smell" from "existing convention".
+
+### Step 3: Review each changed file in detail
+
+For every file in the diff:
+
+1. Read the full file, not just the changed lines — understand the full component/module shape.
+2. Identify the file's role (screen, hook, service, util, type, test).
+3. Apply all mandatory logic checks to that file's specific logic.
+4. Note findings scoped to that file before moving to the next.
+
+Group findings by file in the output. Do not mix findings from different files in one paragraph.
+
+### Step 4: Synthesize and output
+
+After reviewing all files, write the final review following the output template.
+
+---
+
 ## When to use
 
 Use this skill when:

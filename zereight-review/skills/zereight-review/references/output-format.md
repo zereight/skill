@@ -44,7 +44,8 @@ Bad (too generic, avoid):
 
 ## ⚠️ Findings
 
-Order by severity: 🔴 Critical → 🟠 Major → 🟡 Minor → 🔵 Trivial. Max 5 unless critical issues exist.
+Group findings **by file**. Within each file, order by severity: 🔴 Critical → 🟠 Major → 🟡 Minor → 🔵 Trivial.
+Max 5 findings total unless critical issues exist.
 
 **Each finding must include all 5 fields:**
 
@@ -60,8 +61,27 @@ Order by severity: 🔴 Critical → 🟠 Major → 🟡 Minor → 🔵 Trivial.
 **Type icons:** ⚠️ Potential issue · 🛠️ Refactor suggestion · 🧹 Nitpick (thorough mode only)
 **Severity icons:** 🔴 Critical · 🟠 Major · 🟡 Minor · 🔵 Trivial · ⚪ Info
 
+Structure findings as:
+
+```
+#### `path/to/changed-file.tsx`
+
+### ⚠️ 🟡 Finding title
+...
+
+### 🛠️ 🔵 Another finding
+...
+
+#### `path/to/another-file.ts`
+
+### ⚠️ 🟠 Finding title
+...
+```
+
 Example:
 ```
+#### `src/components/bottom-sheet-pin/bottom-sheet-pin.tsx`
+
 ### ⚠️ 🟡 Partial prop override breaks pair invariant
 
 **Condition:** `mismatchedCountProp` provided, `maxAttemptCountProp` absent, local state count is 0.
