@@ -6,7 +6,7 @@ Reference: `react-native-best-practices`, `agent-device`
 
 ## 1. Event listener / subscription not removed in cleanup
 
-**문제:** 리스너를 cleanup에서 제거하지 않으면 컴포넌트 언마운트 후에도 계속 실행 → 메모리 누수, 크래시 위험
+**Problem:** Failing to remove a listener in cleanup keeps it running after the component unmounts → memory leak, crash risk.
 
 ```tsx
 // 🔴 Bad
@@ -21,21 +21,21 @@ useEffect(() => {
   return () => subscription.remove()
 }, [])
 
-// Keyboard, NetInfo, DeviceEventEmitter 등도 동일 패턴
+// Same pattern applies to Keyboard, NetInfo, DeviceEventEmitter, etc.
 useEffect(() => {
   const unsubscribe = NetInfo.addEventListener(handleNetworkChange)
   return unsubscribe
 }, [])
 ```
 
-**원칙:** `addEventListener`, `addListener`, `subscribe` 등 등록 함수가 있으면 cleanup에서 반드시 제거한다.
+**Principle:** Any registration call (`addEventListener`, `addListener`, `subscribe`, etc.) must have a corresponding removal in cleanup.
 **Severity:** ⚠️ 🟠 Major
 
 ---
 
 ## 2. NativeModules called synchronously in render path
 
-**문제:** 동기 native module 호출은 JS thread를 블로킹해 UI freeze 발생
+**Problem:** Synchronous native module calls block the JS thread, causing UI freezes.
 
 ```tsx
 // 🔴 Bad — synchronous native call in render
@@ -54,14 +54,14 @@ function MyComponent() {
 }
 ```
 
-**원칙:** native module 호출은 항상 async로, render 함수 밖에서 실행한다.
+**Principle:** Always call native modules asynchronously and outside the render function.
 **Severity:** ⚠️ 🟠 Major
 
 ---
 
 ## 3. Large object passed over bridge
 
-**문제:** bridge를 통해 10KB 이상의 JSON을 직렬화하면 JS thread를 수백ms 블로킹할 수 있다.
+**Problem:** Serializing 10KB+ JSON over the bridge can block the JS thread for hundreds of milliseconds.
 
 ```tsx
 // 🔴 Bad — passing entire store snapshot over bridge
@@ -75,14 +75,14 @@ NativeModules.Analytics.track(JSON.stringify({
 }))
 ```
 
-**원칙:** bridge payload는 최소화한다. 큰 데이터가 필요하면 native storage(SQLite, MMKV)를 통해 공유하거나 streaming API를 사용한다.
+**Principle:** Minimize bridge payloads. For large data, share via native storage (SQLite, MMKV) or use a streaming API.
 **Severity:** ⚠️ 🟡 Minor
 
 ---
 
 ## 4. Image without dimensions or resizeMode
 
-**문제:** 크기가 없는 이미지는 로드 후 레이아웃 재계산(layout thrashing)을 유발한다.
+**Problem:** Images without explicit dimensions cause layout recalculation (layout thrashing) after they load.
 
 ```tsx
 // 🔴 Bad — no dimensions, layout recalculates after load
@@ -105,14 +105,14 @@ import { Image } from 'expo-image'
 />
 ```
 
-**원칙:** 모든 이미지에는 `width`, `height`, `resizeMode`를 명시한다. 가능하면 `expo-image`를 사용해 blurhash/캐싱을 활용한다.
+**Principle:** Always specify `width`, `height`, and `resizeMode` on every image. Use `expo-image` when possible for blurhash and caching support.
 **Severity:** 🛠️ 🟡 Minor
 
 ---
 
 ## 5. Remote image without caching strategy
 
-**문제:** 매 요청마다 원격 이미지를 다시 다운로드하면 네트워크 비용과 렌더 지연이 증가한다.
+**Problem:** Re-downloading remote images on every request increases network cost and render latency.
 
 ```tsx
 // 🔴 Bad — no caching
@@ -134,33 +134,33 @@ import FastImage from 'react-native-fast-image'
 />
 ```
 
-**원칙:** 원격 이미지는 반드시 캐싱 전략을 명시한다. `expo-image` 또는 `react-native-fast-image`를 사용한다.
+**Principle:** Always specify a caching strategy for remote images. Use `expo-image` or `react-native-fast-image`.
 **Severity:** 🛠️ 🟡 Minor
 
 ---
 
 ## 6. New dependency added without bundle size check
 
-**문제:** 잘못된 라이브러리 선택으로 번들이 수백KB 증가할 수 있다.
+**Problem:** A poor library choice can silently add hundreds of KB to the bundle.
 
 ```
-⚪ Info — 새 패키지가 추가됐습니다. 번들 사이즈 영향을 확인하세요.
+⚪ Info — A new package was added. Verify the bundle size impact.
 
-권장 체크:
-1. bundlephobia.com에서 패키지 사이즈 확인
-2. 사이즈가 50KB+인 경우 대안 검토
+Recommended checks:
+1. Check package size on bundlephobia.com
+2. If 50KB+, evaluate alternatives
 3. moment.js → date-fns / dayjs
-4. lodash (full) → lodash-es + tree shaking 또는 개별 함수 import
+4. lodash (full) → lodash-es + tree shaking or individual function imports
 ```
 
-**원칙:** 50KB 이상의 새 의존성은 대안을 검토한다. PR에 번들 사이즈 영향을 명시하는 것을 권장.
+**Principle:** Evaluate alternatives for any new dependency over 50KB. Recommend noting the bundle size impact in the PR.
 **Severity:** ⚪ Info
 
 ---
 
 ## 7. console.log in production code path
 
-**문제:** `console.log`는 JS thread를 블로킹하고 민감 데이터를 노출할 수 있다.
+**Problem:** `console.log` blocks the JS thread and can expose sensitive data.
 
 ```tsx
 // 🔴 Bad
@@ -178,5 +178,5 @@ function processPayment(data: PaymentData) {
 }
 ```
 
-**원칙:** 프로덕션 코드에서 `console.log`는 `__DEV__` 가드로 감싸거나 제거한다. 민감 데이터(카드번호, 토큰 등)는 절대 로깅하지 않는다.
-**Severity:** 🧹 🔵 Trivial (민감 데이터 포함 시 ⚠️ 🟠 Major로 상향)
+**Principle:** Wrap `console.log` in production code with a `__DEV__` guard or remove it. Never log sensitive data (card numbers, tokens, etc.).
+**Severity:** 🧹 🔵 Trivial (escalate to ⚠️ 🟠 Major if sensitive data is included)

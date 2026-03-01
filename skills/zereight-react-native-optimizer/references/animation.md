@@ -8,7 +8,7 @@ Reference: `react-native-animations`, `vercel-react-native-skills`
 
 ## 1. Legacy Animated API instead of Reanimated
 
-**문제:** `Animated.Value`는 JS thread에서 실행 — 60fps 보장 불가
+**Problem:** `Animated.Value` runs on the JS thread — 60fps cannot be guaranteed
 
 ```tsx
 // 🔴 Bad
@@ -26,14 +26,14 @@ const animatedStyle = useAnimatedStyle(() => ({
 }))
 ```
 
-**원칙:** 새로운 애니메이션은 반드시 Reanimated 3을 사용한다. 기존 `Animated` API는 migration 대상으로 표시.
+**Principle:** All new animations must use Reanimated 3. Mark existing `Animated` API usage as migration targets.
 **Severity:** 🛠️ 🟠 Major
 
 ---
 
 ## 2. Animation driving style via setState (JS thread)
 
-**문제:** 애니메이션 값을 React state로 관리하면 매 프레임마다 JS bridge를 건너 리렌더가 발생한다.
+**Problem:** Managing animation values in React state causes a re-render crossing the JS bridge on every frame.
 
 ```tsx
 // 🔴 Bad — setState on every animation frame
@@ -50,14 +50,14 @@ const translateX = useSharedValue(0)
 translateX.value = withSpring(100)
 ```
 
-**원칙:** 애니메이션 값은 절대 React state에 넣지 않는다. shared value로만 관리한다.
+**Principle:** Never put animation values in React state. Manage them exclusively as shared values.
 **Severity:** ⚠️ 🟠 Major
 
 ---
 
 ## 3. Worklet accessing JS-side state without runOnJS
 
-**문제:** worklet 함수에서 JS thread의 React state나 변수를 직접 읽으면 크래시 또는 stale 값이 된다.
+**Problem:** Reading React state or JS-side variables directly inside a worklet causes crashes or stale values.
 
 ```tsx
 // 🔴 Bad — `items` is JS-side array, not accessible from UI thread
@@ -77,14 +77,14 @@ const gesture = Gesture.Pan().onEnd(() => {
 })
 ```
 
-**원칙:** worklet 내에서 JS-side 데이터가 필요하면 shared value로 미리 동기화하거나 `runOnJS`로 JS thread에 위임한다.
+**Principle:** When JS-side data is needed inside a worklet, pre-sync it via a shared value or delegate to the JS thread with `runOnJS`.
 **Severity:** ⚠️ 🟠 Major
 
 ---
 
 ## 4. useAnimatedStyle depending on non-shared reactive data
 
-**문제:** `useAnimatedStyle` 내에서 props나 state를 직접 참조하면 JS thread 실행이 강제된다.
+**Problem:** Referencing props or state directly inside `useAnimatedStyle` forces execution on the JS thread.
 
 ```tsx
 // 🔴 Bad — `isActive` is React state, forces JS thread execution
@@ -103,14 +103,14 @@ const animatedStyle = useAnimatedStyle(() => ({
 }))
 ```
 
-**원칙:** `useAnimatedStyle` 내부에서 참조하는 값은 모두 shared value여야 한다.
+**Principle:** All values referenced inside `useAnimatedStyle` must be shared values.
 **Severity:** ⚠️ 🟡 Minor
 
 ---
 
 ## 5. TouchableOpacity in animated/gesture context
 
-**문제:** `TouchableOpacity`는 JS thread에서 opacity 처리 — gesture와 조합 시 응답 지연 발생
+**Problem:** `TouchableOpacity` handles opacity on the JS thread — causes input lag when combined with gestures.
 
 ```tsx
 // 🔴 Bad — JS thread opacity, gesture conflicts
@@ -133,14 +133,14 @@ const tap = Gesture.Tap()
 </GestureDetector>
 ```
 
-**원칙:** 애니메이션이 있는 컴포넌트의 터치 핸들링은 `GestureDetector`로 교체한다.
+**Principle:** Replace touch handling in animated components with `GestureDetector`.
 **Severity:** 🛠️ 🟡 Minor
 
 ---
 
 ## 6. Animation not cancelled on unmount
 
-**문제:** 컴포넌트 언마운트 후 진행 중인 애니메이션이 계속 실행되면 메모리 누수 및 `setState on unmounted component` 경고 발생
+**Problem:** Animations continuing after a component unmounts cause memory leaks and `setState on unmounted component` warnings.
 
 ```tsx
 // 🔴 Bad — animation continues after unmount
@@ -157,14 +157,14 @@ useEffect(() => {
 }, [])
 ```
 
-**원칙:** `withRepeat` 또는 장기 실행 애니메이션은 반드시 cleanup에서 `cancelAnimation`을 호출한다.
+**Principle:** Always call `cancelAnimation` in cleanup for `withRepeat` or long-running animations.
 **Severity:** ⚠️ 🟡 Minor
 
 ---
 
 ## 7. LayoutAnimation instead of Reanimated layout animations
 
-**문제:** `LayoutAnimation`은 모든 레이아웃 변경에 일괄 적용되어 의도치 않은 애니메이션 발생 가능
+**Problem:** `LayoutAnimation` applies globally to all layout changes, potentially causing unintended animations.
 
 ```tsx
 // 🔴 Bad
@@ -181,5 +181,5 @@ import { FadeIn, FadeOut } from 'react-native-reanimated'
 )}
 ```
 
-**원칙:** 특정 컴포넌트에만 레이아웃 애니메이션이 필요하다면 Reanimated의 entering/exiting을 사용한다.
+**Principle:** When layout animation is needed on a specific component only, use Reanimated's entering/exiting props.
 **Severity:** 🛠️ 🔵 Trivial
