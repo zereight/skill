@@ -12,7 +12,7 @@ If the violation causes a bug (stale data, wrong event trigger), escalate to ⚠
 
 ## 1. Derived State
 
-**문제:** props/state에서 계산 가능한 값을 Effect로 동기화
+**Problem:** Synchronizing a value derivable from props/state via an Effect
 
 ```ts
 // 🔴 Bad — extra render pass, state gets stale before Effect runs
@@ -25,13 +25,13 @@ useEffect(() => {
 const fullName = firstName + ' ' + lastName;
 ```
 
-**원칙:** 기존 props/state로부터 계산 가능한 값은 state에 두지 말고 렌더 중에 직접 계산한다.
+**Principle:** Values that can be computed from existing props/state should not be stored in state — compute them directly during render.
 
 ---
 
 ## 2. Expensive Calculation
 
-**문제:** 비용이 큰 계산을 Effect + setState로 캐싱하려는 시도
+**Problem:** Attempting to cache an expensive calculation with Effect + setState
 
 ```ts
 // 🔴 Bad
@@ -50,13 +50,13 @@ const visibleTodos = useMemo(
 );
 ```
 
-**원칙:** 느린 계산은 `useMemo`로 캐시한다. Effect + setState는 추가 렌더를 유발한다.
+**Principle:** Cache slow calculations with `useMemo`. Effect + setState causes an extra render cycle.
 
 ---
 
 ## 3. State Reset on Prop Change
 
-**문제:** prop이 바뀔 때 state를 Effect로 초기화
+**Problem:** Resetting state via an Effect when a prop changes
 
 ```ts
 // 🔴 Bad — renders stale state first, then re-renders after Effect
@@ -68,13 +68,13 @@ useEffect(() => {
 <Profile userId={userId} key={userId} />
 ```
 
-**원칙:** 컴포넌트 전체 state를 초기화해야 한다면 `key` prop을 사용한다.
+**Principle:** Use the `key` prop when you need to reset the entire component state.
 
 ---
 
 ## 4. Partial State Adjustment on Prop Change
 
-**문제:** prop이 바뀔 때 일부 state만 Effect로 조정
+**Problem:** Adjusting only part of the state via an Effect when a prop changes
 
 ```ts
 // 🔴 Bad
@@ -94,13 +94,13 @@ const [selectedId, setSelectedId] = useState(null);
 const selection = items.find(item => item.id === selectedId) ?? null;
 ```
 
-**원칙:** ID 기반 파생으로 "adjustment" 자체를 없앨 수 있는지 먼저 검토한다.
+**Principle:** First check whether ID-based derivation can eliminate the need for "adjustment" entirely.
 
 ---
 
 ## 5. Event-Specific Logic in Effect
 
-**문제:** 유저 이벤트(클릭 등)에 의해 발생해야 하는 로직을 Effect에 넣음
+**Problem:** Placing logic that should only run on a user event (e.g. click) inside an Effect
 
 ```ts
 // 🔴 Bad — fires on every render where isInCart is true (including page reload)
@@ -117,14 +117,14 @@ function handleBuyClick() {
 }
 ```
 
-**판단 기준:** "이 코드가 실행되는 이유가 컴포넌트가 *화면에 표시되었기 때문*인가, 아니면 *유저가 특정 행동을 했기 때문*인가?"
-→ 전자는 Effect, 후자는 이벤트 핸들러.
+**Decision criteria:** "Does this code run because the component *appeared on screen*, or because *the user did something*?"
+→ The former belongs in an Effect; the latter belongs in an event handler.
 
 ---
 
 ## 6. Notifying Parent via Effect
 
-**문제:** 내부 state 변경을 Effect로 부모에게 전달
+**Problem:** Propagating an internal state change to the parent via an Effect
 
 ```ts
 // 🔴 Bad — parent re-renders after child, causing cascading renders
@@ -139,13 +139,13 @@ function updateToggle(nextIsOn) {
 }
 ```
 
-**원칙:** 같은 이벤트에서 발생한 state 변경은 하나의 이벤트 핸들러에서 처리한다.
+**Principle:** State changes that originate from the same event should be handled in a single event handler.
 
 ---
 
 ## 7. Effect Chain (Cascading Effects)
 
-**문제:** Effect가 state를 바꾸고, 그 state가 다른 Effect를 트리거하는 체인
+**Problem:** An Effect changes state, which triggers another Effect, forming a chain
 
 ```ts
 // 🔴 Bad — 4 re-renders for one user action
@@ -171,13 +171,13 @@ function handlePlaceCard(nextCard) {
 }
 ```
 
-**원칙:** Effect 체인은 코드를 취약하게 만든다. 이벤트 핸들러에서 다음 state를 한 번에 계산한다.
+**Principle:** Effect chains make code fragile. Compute the next state all at once inside an event handler.
 
 ---
 
 ## 8. Data Fetching Without Cleanup (Race Condition)
 
-**문제:** 빠른 입력 시 이전 요청의 응답이 최신 요청보다 늦게 도착해 stale 결과 표시
+**Problem:** On rapid input changes, a response from an earlier request arrives after a later one, displaying stale results
 
 ```ts
 // 🔴 Bad — race condition: "hell" response may overwrite "hello" response
@@ -197,14 +197,14 @@ useEffect(() => {
 }, [query, page]);
 ```
 
-**원칙:** Effect로 데이터를 fetch할 때는 반드시 cleanup으로 stale 응답을 무시해야 한다.
-→ 이 패턴이 반복된다면 `useData(url)` 같은 커스텀 훅으로 추출하라.
+**Principle:** When fetching data inside an Effect, always ignore stale responses via a cleanup flag.
+→ If this pattern repeats, extract it into a custom hook like `useData(url)`.
 
 ---
 
 ## 9. External Store Subscription via Effect
 
-**문제:** 브라우저 API 등 외부 store를 Effect로 직접 구독
+**Problem:** Manually subscribing to an external store (e.g. browser API) directly inside an Effect
 
 ```ts
 // 🔴 Bad — manual subscription with Effect is error-prone
@@ -235,18 +235,18 @@ const isOnline = useSyncExternalStore(
 );
 ```
 
-**원칙:** 외부 store 구독에는 `useSyncExternalStore`를 사용한다.
+**Principle:** Use `useSyncExternalStore` for external store subscriptions.
 
 ---
 
 ## Review Severity Guide
 
-| 패턴 | 심각도 | 근거 |
+| Pattern | Severity | Rationale |
 |---|---|---|
-| Derived state (Effect로 동기화) | 🛠️ 🟡 Minor | 불필요한 렌더 2회, state stale 위험 |
-| Event logic in Effect | ⚠️ 🟠 Major | 페이지 로드 시 재실행 등 실제 버그 유발 |
-| Effect chain (3개 이상) | 🛠️ 🟡 Minor | 유지보수성 저하, 디버깅 어려움 |
-| Data fetch without cleanup | ⚠️ 🟠 Major | race condition → 잘못된 데이터 표시 |
-| Notify parent via Effect | 🛠️ 🟡 Minor | 추가 렌더 pass, 타이밍 이슈 |
-| External store via Effect | 🛠️ 🔵 Trivial | 작동은 하지만 better API 존재 |
-| Expensive calc without useMemo | 🛠️ 🔵 Trivial | 성능, 대부분 실용적 임계치 이하 |
+| Derived state (synced via Effect) | 🛠️ 🟡 Minor | 2 extra renders, state stale risk |
+| Event logic in Effect | ⚠️ 🟠 Major | Causes real bugs e.g. re-firing on page reload |
+| Effect chain (3 or more) | 🛠️ 🟡 Minor | Reduces maintainability, harder to debug |
+| Data fetch without cleanup | ⚠️ 🟠 Major | Race condition → stale data displayed |
+| Notify parent via Effect | 🛠️ 🟡 Minor | Extra render pass, timing issues |
+| External store via Effect | 🛠️ 🔵 Trivial | Works but a better API exists |
+| Expensive calc without useMemo | 🛠️ 🔵 Trivial | Performance concern, usually below practical threshold |
