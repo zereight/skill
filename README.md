@@ -1,67 +1,28 @@
 # zereight-review
 
-Code review plugins focused on **logic correctness and edge cases**. Available as plugins for Factory Droid and Claude Code, with optional platform MCP integration.
+Code review skill focused on **logic correctness and edge cases**.
 
-## Plugins
+## Skills
 
-| Plugin | Description |
-|--------|-------------|
-| `zereight-review` | Core skill, platform-agnostic |
-| `zereight-review-github` | Core skill + GitHub PR MCP |
-| `zereight-review-gitlab` | Core skill + GitLab MR MCP |
-| `zereight-review-bitbucket` | Core skill + Bitbucket PR MCP |
+| Skill | Description |
+|-------|-------------|
+| `zereight-review` | Core review skill |
 
 ## Install
 
-### Factory Droid
-
 ```bash
-# Add marketplace
-droid plugin marketplace add https://github.com/your/repo
-
-# Install a plugin (pick one)
-droid plugin install zereight-review@zereight-review-marketplace
-droid plugin install zereight-review-github@zereight-review-marketplace
-droid plugin install zereight-review-gitlab@zereight-review-marketplace
-droid plugin install zereight-review-bitbucket@zereight-review-marketplace
+# Clone this repo, then:
+npx skills add /path/to/this/repo --yes --global
 ```
 
-### Claude Code
-
-```bash
-# Add marketplace
-claude plugin marketplace add https://github.com/your/repo
-
-# Install a plugin (pick one)
-claude plugin install zereight-review@zereight-review-marketplace
-claude plugin install zereight-review-github@zereight-review-marketplace
-```
-
-### Legacy (npx skills)
-
-```bash
-npx skills add /path/to/this/repo -g --skill zereight-review -y
-```
+Installs to `~/.agents/skills/zereight-review` and symlinks to 40+ agents (Droid, Claude Code, Cursor, Copilot, etc.).
 
 ## Update
 
 ```bash
-# Pull latest changes
 git -C /path/to/this/repo pull
-
-# Update plugin
-droid plugin update zereight-review-github@zereight-review-marketplace
+npx skills add /path/to/this/repo --yes --global
 ```
-
-## MCP Setup
-
-Platform plugins require environment variables:
-
-**GitHub** — `GITHUB_PERSONAL_ACCESS_TOKEN`
-
-**GitLab** — `GITLAB_PERSONAL_ACCESS_TOKEN`, `GITLAB_API_URL`
-
-**Bitbucket** — `BITBUCKET_USERNAME`, `BITBUCKET_APP_PASSWORD`
 
 ## Skill: `zereight-review`
 
@@ -74,5 +35,6 @@ Prioritizes:
 - State vs UI display mismatch
 - Boundary values (`0`, negative, undefined, overflow)
 - Async timing / race / stale closure
+- Clean code (naming, component design, React Effect anti-patterns)
 
 Output format: CodeRabbit-style (Summary / Good / Findings / Verdict)
