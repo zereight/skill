@@ -68,6 +68,7 @@ Key areas:
 - **Naming**: intention-revealing, consistent vocabulary, no misleading names
 - **Functions**: single responsibility, no flag arguments, no side effects in getters
 - **React/TS**: prop explosion, render-in-render, `any` usage, hook naming, effect scope
+- **React Effect anti-patterns**: derived state via Effect, event logic in Effect, Effect chains, fetch without cleanup — see `references/react-effect-guidelines.md`
 - **React Native**: StyleSheet outside component, inline styles in hot paths, raw primitives instead of design system components
 
 Report clean code findings as 🔵 Trivial or 🟡 Minor only. Never block a merge for clean code alone.
