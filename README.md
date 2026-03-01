@@ -18,8 +18,9 @@ npx skills add vercel-labs/agent-skills --skill vercel-react-best-practices -yg
 npx skills add vercel-labs/agent-skills --skill vercel-composition-patterns -yg
 npx skills add vercel-labs/agent-skills --skill vercel-react-native-skills -yg
 
-# Callstack — React Native best practices
+# Callstack — React Native best practices + device
 npx skills add callstackincubator/agent-skills --skill react-native-best-practices -yg
+npx skills add callstackincubator/agent-device --skill agent-device -yg
 
 # Plugin Agent Marketplace — React Native full suite
 npx skills add pluginagentmarketplace/custom-plugin-react-native --skill react-native-basics -yg
