@@ -11,8 +11,7 @@ Code review skill focused on **logic correctness and edge cases**.
 ## Install
 
 ```bash
-# Clone this repo, then:
-npx skills add /path/to/this/repo --yes --global
+npx skills add zereight/skill --yes --global
 ```
 
 Installs to `~/.agents/skills/zereight-review` and symlinks to 40+ agents (Droid, Claude Code, Cursor, Copilot, etc.).
@@ -20,8 +19,7 @@ Installs to `~/.agents/skills/zereight-review` and symlinks to 40+ agents (Droid
 ## Update
 
 ```bash
-git -C /path/to/this/repo pull
-npx skills add /path/to/this/repo --yes --global
+npx skills add zereight/skill --yes --global
 ```
 
 ## Skill: `zereight-review`
