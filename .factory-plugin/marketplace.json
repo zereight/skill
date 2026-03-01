@@ -1,0 +1,29 @@
+{
+  "name": "zereight-review-marketplace",
+  "description": "Code review plugins for multiple platforms",
+  "owner": {
+    "name": "zereight"
+  },
+  "plugins": [
+    {
+      "name": "zereight-review",
+      "description": "Core code review skill (platform-agnostic)",
+      "source": "./zereight-review"
+    },
+    {
+      "name": "zereight-review-github",
+      "description": "Code review with GitHub PR integration via MCP",
+      "source": "./zereight-review-github"
+    },
+    {
+      "name": "zereight-review-gitlab",
+      "description": "Code review with GitLab MR integration via MCP",
+      "source": "./zereight-review-gitlab"
+    },
+    {
+      "name": "zereight-review-bitbucket",
+      "description": "Code review with Bitbucket PR integration via MCP",
+      "source": "./zereight-review-bitbucket"
+    }
+  ]
+}
