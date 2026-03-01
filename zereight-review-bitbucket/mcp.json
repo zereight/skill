@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "bitbucket": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-bitbucket"],
+      "env": {
+        "BITBUCKET_USERNAME": "${BITBUCKET_USERNAME}",
+        "BITBUCKET_APP_PASSWORD": "${BITBUCKET_APP_PASSWORD}"
+      }
+    }
+  }
+}

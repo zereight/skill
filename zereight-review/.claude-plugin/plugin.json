@@ -1,0 +1,8 @@
+{
+  "name": "zereight-review",
+  "description": "Comprehensive code review focused on logic correctness, edge cases, and invariant safety. CodeRabbit-style output.",
+  "version": "1.0.0",
+  "author": {
+    "name": "zereight"
+  }
+}

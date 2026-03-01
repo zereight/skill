@@ -1,32 +1,69 @@
-# My Agent Skills
+# zereight-review
 
-Personal agent skills collection. Managed as a single source of truth and installable via `npx skills add`.
+Code review plugins focused on **logic correctness and edge cases**. Available as plugins for Factory Droid and Claude Code, with optional platform MCP integration.
+
+## Plugins
+
+| Plugin | Description |
+|--------|-------------|
+| `zereight-review` | Core skill, platform-agnostic |
+| `zereight-review-github` | Core skill + GitHub PR MCP |
+| `zereight-review-gitlab` | Core skill + GitLab MR MCP |
+| `zereight-review-bitbucket` | Core skill + Bitbucket PR MCP |
 
 ## Install
 
-```bash
-# Interactive (recommended)
-npx skills add /path/to/this/repo
+### Factory Droid
 
-# Non-interactive
+```bash
+# Add marketplace
+droid plugin marketplace add https://github.com/your/repo
+
+# Install a plugin (pick one)
+droid plugin install zereight-review@zereight-review-marketplace
+droid plugin install zereight-review-github@zereight-review-marketplace
+droid plugin install zereight-review-gitlab@zereight-review-marketplace
+droid plugin install zereight-review-bitbucket@zereight-review-marketplace
+```
+
+### Claude Code
+
+```bash
+# Add marketplace
+claude plugin marketplace add https://github.com/your/repo
+
+# Install a plugin (pick one)
+claude plugin install zereight-review@zereight-review-marketplace
+claude plugin install zereight-review-github@zereight-review-marketplace
+```
+
+### Legacy (npx skills)
+
+```bash
 npx skills add /path/to/this/repo -g --skill zereight-review -y
 ```
 
 ## Update
 
-Skills are updated continuously. To get the latest version:
-
 ```bash
 # Pull latest changes
 git -C /path/to/this/repo pull
 
-# Reinstall skills
-npx skills add /path/to/this/repo -g --skill zereight-review -y
+# Update plugin
+droid plugin update zereight-review-github@zereight-review-marketplace
 ```
 
-## Skills
+## MCP Setup
 
-### `zereight-review`
+Platform plugins require environment variables:
+
+**GitHub** — `GITHUB_PERSONAL_ACCESS_TOKEN`
+
+**GitLab** — `GITLAB_PERSONAL_ACCESS_TOKEN`, `GITLAB_API_URL`
+
+**Bitbucket** — `BITBUCKET_USERNAME`, `BITBUCKET_APP_PASSWORD`
+
+## Skill: `zereight-review`
 
 Comprehensive code review focused on **logic correctness and edge cases**, not style.
 
