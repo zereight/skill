@@ -1,12 +1,12 @@
-# zereight-review
+# zereight skills
 
-Code review skill focused on **logic correctness and edge cases**.
+Personal agent skills for code review. CodeRabbit-style feedback focused on correctness and risk.
 
 ## Skills
 
 | Skill | Description |
 |-------|-------------|
-| `zereight-review` | Core review skill — logic correctness, edge cases, clean code |
+| `zereight-review` | Core review — logic correctness, edge cases, clean code, React Effect anti-patterns |
 | `zereight-react-native-optimizer` | RN performance review — rendering, animation, native/bridge checks |
 
 ## Prerequisites
@@ -47,10 +47,11 @@ npx skills add storybookjs/react-native --skill writing-react-native-storybook-s
 ## Install
 
 ```bash
+# Prerequisites first (see below), then:
 npx skills add zereight/skill --yes --global
 ```
 
-Installs to `~/.agents/skills/zereight-review` and symlinks to 40+ agents (Droid, Claude Code, Cursor, Copilot, etc.).
+Installs both skills to `~/.agents/skills/` and symlinks to 40+ agents (Droid, Claude Code, Cursor, Copilot, etc.).
 
 ## Update
 
@@ -58,17 +59,18 @@ Installs to `~/.agents/skills/zereight-review` and symlinks to 40+ agents (Droid
 npx skills add zereight/skill --yes --global
 ```
 
-## Skill: `zereight-review`
+## Skill details
 
-Comprehensive code review focused on **logic correctness and edge cases**, not style.
+### zereight-review
 
-Prioritizes:
-- Invariant breaks (paired values that must stay consistent)
-- Partial-input cases (only some optional fields provided)
-- Fallback-chain risks (`??`, `||`, ternary precedence)
-- State vs UI display mismatch
-- Boundary values (`0`, negative, undefined, overflow)
-- Async timing / race / stale closure
-- Clean code (naming, component design, React Effect anti-patterns)
+Logic-first code review. Runs mandatory checks on every PR, reports in CodeRabbit format.
 
-Output format: CodeRabbit-style (Summary / Good / Findings / Verdict)
+**Checks:** Invariant · Partial input · Fallback chain · State vs UI · Boundary · Async/race · Clean code · React Effect anti-patterns
+**For RN PRs:** also runs `zereight-react-native-optimizer`
+**Output:** Summary / ✅ Good / ⚠️ Findings / Case Matrix / 🎯 Verdict
+
+### zereight-react-native-optimizer
+
+RN performance regression detector. Run alongside `zereight-review` on React Native PRs.
+
+**Checks:** Rendering (FlashList, memo, Context) · Animation (Reanimated, UI thread, gesture) · Native (bridge, memory leaks, image, bundle)
