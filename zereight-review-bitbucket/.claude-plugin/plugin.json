@@ -1,0 +1,8 @@
+{
+  "name": "zereight-review-bitbucket",
+  "description": "zereight-review with Bitbucket PR integration via MCP.",
+  "version": "1.0.0",
+  "author": {
+    "name": "zereight"
+  }
+}

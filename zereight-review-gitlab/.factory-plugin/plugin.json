@@ -1,0 +1,8 @@
+{
+  "name": "zereight-review-gitlab",
+  "description": "zereight-review with GitLab MR integration via MCP.",
+  "version": "1.0.0",
+  "author": {
+    "name": "zereight"
+  }
+}
