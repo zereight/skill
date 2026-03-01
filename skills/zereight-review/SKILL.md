@@ -72,38 +72,40 @@ Minimum matrix dimensions:
 
 If matrix reveals broken invariant, report as at least **Medium**.
 
+## Review types (CodeRabbit style)
+
+Label every finding with a type:
+
+- ⚠️ **Potential issue** — bug, logic flaw, security vulnerability, invariant break
+- 🛠️ **Refactor suggestion** — maintainability, performance, cleaner abstraction
+- 🧹 **Nitpick** — minor style/naming (only in "thorough" mode, not default)
+
+## Severity levels (CodeRabbit style)
+
+Each finding gets a severity icon:
+
+- 🔴 **Critical** — system failure, security breach, data loss, payment error
+- 🟠 **Major** — significant functional breakage, wrong business decision, crash in normal flow
+- 🟡 **Minor** — incorrect UI from valid input, silent error, invariant break in realistic edge case
+- 🔵 **Trivial** — low-impact code quality (non-critical duplication, readability)
+- ⚪ **Info** — context or observation, no action required
+
 ## Findings format (strict)
 
 For each issue, include:
 
-1. **Title** `[High|Medium|Low]`
-2. **Condition** (exact input/state combination)
+1. **Type + Severity + Title** e.g. `⚠️ 🟡 Partial override breaks pair invariant`
+2. **Condition** (exact input/state combination that triggers this)
 3. **Impact** (user/business/technical consequence)
-4. **Evidence** (file + line + short snippet)
-5. **Minimal fix** (smallest safe change)
-
-## Severity rubric
-
-- **High**
-  - Auth/payment/security risk
-  - Data corruption/integrity break
-  - Wrong critical business decision
-  - Crash in normal flow
-- **Medium**
-  - Incorrect UI state from valid input
-  - Silent error/lost message/retry break
-  - Invariant break in realistic edge case
-- **Low**
-  - Readability/maintainability issues
-  - Missing rationale comments
-  - Non-critical duplication
+4. **Evidence** `file:line` — short snippet
+5. **Minimal fix** (smallest safe change, preferably a code snippet)
 
 ## Output template
 
 1. `High-Level Summary` (2-4 lines)
-2. `✅ What’s good` (2-4 bullets)
-3. `⚠️ Findings` (ordered by severity, max 5 unless critical)
-4. `Case Matrix` (only when logic merging/fallback exists)
+2. `✅ What’s good` (2-4 bullets, cite specific patterns not generic praise)
+3. `⚠️ Findings` (ordered 🔴→🟠→🟡→🔵, max 5 unless critical)
+4. `Case Matrix` (only when fallback/merge logic exists)
 5. `🎯 Verdict` (`Approve` | `Approve with comments` | `Request changes`)
 
 ## Review behavior rules
