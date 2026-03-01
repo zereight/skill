@@ -6,7 +6,8 @@ Code review skill focused on **logic correctness and edge cases**.
 
 | Skill | Description |
 |-------|-------------|
-| `zereight-review` | Core review skill |
+| `zereight-review` | Core review skill — logic correctness, edge cases, clean code |
+| `zereight-react-native-optimizer` | RN performance review — rendering, animation, native/bridge checks |
 
 ## Prerequisites
 

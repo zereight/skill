@@ -70,6 +70,7 @@ Key areas:
 - **React/TS**: prop explosion, render-in-render, `any` usage, hook naming, effect scope
 - **React Effect anti-patterns**: derived state via Effect, event logic in Effect, Effect chains, fetch without cleanup — see `references/react-effect-guidelines.md`
 - **React Native**: StyleSheet outside component, inline styles in hot paths, raw primitives instead of design system components
+- **React Native performance**: for RN PRs, also run `zereight-react-native-optimizer` to check rendering, animation, and native regressions
 
 Report clean code findings as 🔵 Trivial or 🟡 Minor only. Never block a merge for clean code alone.
 
