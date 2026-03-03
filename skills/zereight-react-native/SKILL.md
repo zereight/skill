@@ -17,7 +17,7 @@ It routes you to the right specialist skill based on what you're building.
 | State management (Zustand, Redux, TanStack Query) | `react-native-state` |
 | Navigation, deep linking, tab/stack structure | `react-native-navigation` |
 | Native modules, Turbo Modules, JSI, Fabric | `react-native-native-modules` |
-| Testing (Jest, Testing Library, Detox) | `react-native-testing` |
+| Testing (Jest, Testing Library, Detox) | `zereight-react-native-testing` / `react-native-testing` |
 | Deployment (EAS Build, App Store, Play Store) | `react-native-deployment` |
 | Storybook setup | `setup-react-native-storybook` |
 | Writing Storybook stories | `writing-react-native-storybook-stories` |
