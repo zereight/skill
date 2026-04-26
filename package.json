@@ -1,0 +1,12 @@
+{
+  "name": "@zereight/skill",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Zereight agent skills marketplace.",
+  "scripts": {
+    "check": "jq empty .claude-plugin/marketplace.json && jq empty .factory-plugin/marketplace.json && ! rg -n \"zereight-review-(github|gitlab)|zereight-review-github|zereight-review-gitlab\" . --hidden --glob '!**/.git/**' --glob '!package.json'",
+    "deploy": "npm run check && git push && npm run install:global && npm run verify",
+    "install:global": "npx skills add zereight/skill --yes --global",
+    "verify": "test -f ~/.agents/skills/zereight-review/SKILL.md && rg -n \"Mandatory Review Ensemble -- NON-NEGOTIABLE\" ~/.agents/skills/zereight-review/SKILL.md && wc -l ~/.agents/skills/zereight-review/SKILL.md"
+  }
+}
