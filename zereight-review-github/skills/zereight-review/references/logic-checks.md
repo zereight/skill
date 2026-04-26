@@ -1,1 +1,0 @@
-../../../../zereight-review/skills/zereight-review/references/logic-checks.md
