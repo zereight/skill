@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mcporter MCP First"
+  short_description: "Search mcporter before MCP fallback."
+  default_prompt: "Use mcporter to find and call the right MCP tool first."
