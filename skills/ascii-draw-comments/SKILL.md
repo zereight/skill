@@ -26,6 +26,18 @@ Use this skill to make ASCII diagrams that survive copy/paste into code comments
    - Paste it inside the target comment block.
 6. If the user wants the diagram directly in chat or a file, generate the final comment-ready ASCII yourself.
 
+## Bundled Script
+
+Use `scripts/wrap_ascii_comment.py` when the user already has ASCII art and wants it wrapped as a source-code comment without breaking alignment.
+
+Examples:
+
+```sh
+python3 scripts/wrap_ascii_comment.py --style block < diagram.txt
+python3 scripts/wrap_ascii_comment.py --style line --prefix "# " < diagram.txt
+python3 scripts/wrap_ascii_comment.py --style markdown < diagram.txt
+```
+
 ## Comment Templates
 
 JavaScript/TypeScript/C-style:
