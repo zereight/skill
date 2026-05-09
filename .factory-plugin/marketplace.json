@@ -19,6 +19,11 @@
       "name": "zereight-learning",
       "description": "Situational learning coach for concrete scenarios, practice, and feedback",
       "source": "./zereight-learning"
+    },
+    {
+      "name": "zereight-goal",
+      "description": "Strategy hardening loop for loopholes, fixes, verification, and confidence gating",
+      "source": "./zereight-goal"
     }
   ]
 }

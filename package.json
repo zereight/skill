@@ -7,6 +7,6 @@
     "check": "jq empty .claude-plugin/marketplace.json && jq empty .factory-plugin/marketplace.json && ! rg -n \"zereight-review-(github|gitlab)|zereight-review-github|zereight-review-gitlab\" . --hidden --glob '!**/.git/**' --glob '!package.json'",
     "deploy": "npm run check && git push && npm run install:global && npm run verify",
     "install:global": "npx skills add zereight/skill --yes --global",
-    "verify": "test -f ~/.agents/skills/zereight-review/SKILL.md && rg -n \"Mandatory Review Ensemble -- NON-NEGOTIABLE\" ~/.agents/skills/zereight-review/SKILL.md && test -f ~/.agents/skills/zereight-learning/SKILL.md && rg -n \"# Zereight Learning\" ~/.agents/skills/zereight-learning/SKILL.md && wc -l ~/.agents/skills/zereight-review/SKILL.md ~/.agents/skills/zereight-learning/SKILL.md"
+    "verify": "test -f ~/.agents/skills/zereight-review/SKILL.md && rg -n \"Mandatory Review Ensemble -- NON-NEGOTIABLE\" ~/.agents/skills/zereight-review/SKILL.md && test -f ~/.agents/skills/zereight-learning/SKILL.md && rg -n \"# Zereight Learning\" ~/.agents/skills/zereight-learning/SKILL.md && test -f ~/.agents/skills/zereight-goal/SKILL.md && rg -n \"# Zereight Goal\" ~/.agents/skills/zereight-goal/SKILL.md && wc -l ~/.agents/skills/zereight-review/SKILL.md ~/.agents/skills/zereight-learning/SKILL.md ~/.agents/skills/zereight-goal/SKILL.md"
   }
 }
