@@ -1,0 +1,4 @@
+interface:
+  display_name: "Atlassian with mcporter"
+  short_description: "Read Jira and Confluence through mcporter."
+  default_prompt: "Use atlassian-with-mcporter to read or verify this Atlassian Jira or Confluence item."

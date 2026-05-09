@@ -27,8 +27,9 @@ npx skills add zereight/skill --yes --global
 | State vs UI | Render conditions vs computed data conditions |
 | Boundary | `0`, negative, `undefined`, empty string, overflow |
 | Async / race | Stale closure, open/close/reset/submit ordering, loading flag recovery |
-| Clean code | Naming, component design, React Effect anti-patterns, RN StyleSheet |
+| Clean code | Naming, component design, React Effect anti-patterns, RN StyleSheet, React Doctor |
 | React Effects | Derived state, event logic in Effect, Effect chains, fetch without cleanup |
+| React Doctor | For React/RN PRs, run `npx react-doctor@latest` when tooling/network allow it |
 
 ## References
 

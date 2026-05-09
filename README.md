@@ -10,6 +10,7 @@ Personal agent skills for code review and React Native development.
 | `zereight-react-native-optimizer` | RN performance review — rendering, animation, native/bridge checks |
 | `zereight-react-native-testing` | RNTL v13/v14 test writing — queries, matchers, userEvent, async patterns |
 | `zereight-react-native` | RN gateway — routes tasks to the right specialist skill |
+| `zereight-goal` | Strategy hardening — loopholes, fixes, verification, confidence gate |
 
 ## Install
 
@@ -60,3 +61,7 @@ RNTL test writing guide. Covers v13 (sync, React 18) and v14 (async, React 19+).
 ### zereight-react-native
 
 RN development gateway. Routes tasks to the right specialist skill (basics, animations, state, navigation, native modules, testing, deployment, Storybook, HeroUI).
+
+### zereight-goal
+
+Strategy hardening loop for goals and plans. Finds loopholes, separates required fixes from cleanup, verifies evidence, and only claims confidence within checked scope.
