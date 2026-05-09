@@ -77,6 +77,9 @@ Review preflight safeguards:
 - If the nearest repo `AGENTS.md` is missing, do not treat that as permission to
   ignore repo instructions. Use any AGENTS instructions supplied in the current
   conversation as the repo instruction source, state that fallback, and continue.
+- For React or React Native PRs, include `npx react-doctor@latest` in
+  verification. Run it from the repo root when package-manager and network
+  access allow it. If it cannot run, report the exact command and blocker.
 - When spawning review subagents, do not combine `fork_context=true` with an
   explicit `agent_type` if the runtime rejects that combination. Retry by
   spawning role-specific agents without `fork_context` and put the exact PR
@@ -410,6 +413,7 @@ Key areas:
 - **React/TS**: prop explosion, render-in-render, `any` usage, hook naming, effect scope
 - **React Effect anti-patterns**: derived state via Effect, event logic in Effect, Effect chains, fetch without cleanup — see `references/react-effect-guidelines.md`
 - **React Native**: StyleSheet outside component, inline styles in hot paths, raw primitives instead of design system components
+- **React Doctor**: for React/RN PRs, run `npx react-doctor@latest` and review reported effect/render/performance risks
 - **React Native performance**: for RN PRs, also run `zereight-react-native-optimizer` to check rendering, animation, and native regressions
 
 Report clean code findings as 🔵 Trivial or 🟡 Minor only. Never block a merge for clean code alone.

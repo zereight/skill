@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>agentmemory + context-mode + RTK Architecture</title>
+  <style>
+    :root {
+      --ink: #181711;
+      --muted: #625f54;
+      --paper: #f6f0df;
+      --paper-2: #ebe1c7;
+      --line: #252219;
+      --red: #c83d2f;
+      --blue: #2c6f8e;
+      --green: #3d7b4f;
+      --yellow: #d8a328;
+      --violet: #7a588c;
+      --white: #fffaf0;
+      --shadow: rgba(24, 23, 17, 0.22);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(90deg, rgba(24,23,17,.055) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(24,23,17,.055) 1px, transparent 1px),
+        radial-gradient(circle at 18% 12%, rgba(216,163,40,.2), transparent 28%),
+        radial-gradient(circle at 82% 18%, rgba(44,111,142,.16), transparent 30%),
+        var(--paper);
+      background-size: 28px 28px, 28px 28px, auto, auto, auto;
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+      letter-spacing: 0;
+    }
+
+    .page {
+      min-height: 100vh;
+      padding: 34px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 24px;
+      align-items: end;
+      max-width: 1360px;
+      margin: 0 auto 28px;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 900px;
+      font-size: clamp(40px, 5.8vw, 92px);
+      line-height: .88;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .lead {
+      margin: 0;
+      border-left: 7px solid var(--red);
+      padding: 12px 0 12px 18px;
+      font: 700 18px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--muted);
+      background: rgba(255,250,240,.55);
+    }
+
+    .board {
+      max-width: 1360px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr) 290px;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .rail,
+    .panel,
+    .risk {
+      border: 3px solid var(--line);
+      background: rgba(255,250,240,.78);
+      box-shadow: 8px 8px 0 var(--shadow);
+    }
+
+    .rail,
+    .risk {
+      padding: 18px;
+    }
+
+    .rail h2,
+    .risk h2 {
+      margin: 0 0 14px;
+      font: 900 18px/1.05 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      text-transform: uppercase;
+    }
+
+    .legend {
+      display: grid;
+      gap: 12px;
+    }
+
+    .legend-item {
+      display: grid;
+      grid-template-columns: 18px 1fr;
+      gap: 10px;
+      align-items: start;
+      font: 700 14px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .swatch {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--line);
+      margin-top: 1px;
+    }
+
+    .swatch.blue { background: var(--blue); }
+    .swatch.green { background: var(--green); }
+    .swatch.yellow { background: var(--yellow); }
+    .swatch.red { background: var(--red); }
+    .swatch.violet { background: var(--violet); }
+
+    .rule {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 2px dashed var(--line);
+      color: var(--muted);
+      font: 700 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .panel {
+      position: relative;
+      min-height: 720px;
+      padding: 28px;
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, rgba(255,250,240,.92), rgba(235,225,199,.88));
+    }
+
+    .lane-title {
+      position: absolute;
+      left: 28px;
+      top: 18px;
+      font: 900 13px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .diagram {
+      position: relative;
+      height: 662px;
+      margin-top: 22px;
+    }
+
+    .node {
+      position: absolute;
+      border: 3px solid var(--line);
+      background: var(--white);
+      padding: 13px 14px;
+      box-shadow: 6px 6px 0 rgba(24,23,17,.18);
+      min-height: 96px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .node h3 {
+      margin: 0 0 9px;
+      font: 900 18px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      text-transform: uppercase;
+    }
+
+    .node p {
+      margin: 0;
+      color: var(--muted);
+      font: 700 13px/1.36 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .node.agent { left: 2%; top: 42%; width: 18%; border-color: var(--line); }
+    .node.rtk { left: 25%; top: 8%; width: 20%; border-color: var(--green); }
+    .node.ctx { left: 25%; top: 40%; width: 23%; border-color: var(--blue); }
+    .node.agentmemory { left: 56%; top: 24%; width: 23%; border-color: var(--yellow); }
+    .node.local { left: 82%; top: 22%; width: 16%; border-color: var(--violet); }
+    .node.external { left: 82%; top: 55%; width: 16%; border-color: var(--red); }
+    .node.manual { left: 50%; top: 72%; width: 28%; border-color: var(--line); }
+
+    .tag {
+      display: inline-block;
+      width: fit-content;
+      margin-bottom: 10px;
+      padding: 4px 7px;
+      border: 2px solid currentColor;
+      font: 900 11px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      text-transform: uppercase;
+    }
+
+    .node.rtk .tag { color: var(--green); }
+    .node.ctx .tag { color: var(--blue); }
+    .node.agentmemory .tag { color: #9b7418; }
+    .node.local .tag { color: var(--violet); }
+    .node.external .tag { color: var(--red); }
+
+    svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .arrow {
+      fill: none;
+      stroke: var(--line);
+      stroke-width: 4;
+      stroke-linecap: square;
+      stroke-linejoin: round;
+    }
+
+    .arrow.blue { stroke: var(--blue); }
+    .arrow.green { stroke: var(--green); }
+    .arrow.yellow { stroke: #9b7418; }
+    .arrow.red { stroke: var(--red); stroke-dasharray: 10 8; }
+    .arrow.violet { stroke: var(--violet); }
+
+    .flow-label {
+      position: absolute;
+      padding: 5px 8px;
+      border: 2px solid var(--line);
+      background: var(--paper);
+      font: 900 11px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .l1 { left: 17%; top: 25%; transform: rotate(-8deg); }
+    .l2 { left: 18%; top: 57%; transform: rotate(4deg); }
+    .l3 { left: 47%; top: 36%; transform: rotate(-3deg); }
+    .l4 { right: 15%; top: 42%; transform: rotate(5deg); }
+    .l5 { right: 11%; top: 62%; transform: rotate(-5deg); color: var(--red); }
+    .l6 { left: 43%; bottom: 12%; transform: rotate(2deg); }
+
+    .risk ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 13px;
+    }
+
+    .risk li {
+      padding: 12px;
+      border: 2px solid var(--line);
+      background: rgba(246,240,223,.84);
+      font: 800 13px/1.42 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .risk strong {
+      color: var(--red);
+      text-transform: uppercase;
+    }
+
+    .bottom {
+      max-width: 1360px;
+      margin: 22px auto 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .take {
+      border: 3px solid var(--line);
+      background: rgba(255,250,240,.76);
+      box-shadow: 6px 6px 0 var(--shadow);
+      padding: 18px;
+    }
+
+    .take h2 {
+      margin: 0 0 10px;
+      font: 900 18px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      text-transform: uppercase;
+    }
+
+    .take p {
+      margin: 0;
+      color: var(--muted);
+      font: 800 14px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    @media (max-width: 1100px) {
+      header,
+      .board,
+      .bottom {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        min-height: 980px;
+      }
+
+      .diagram {
+        height: 905px;
+      }
+
+      .node {
+        left: 5% !important;
+        width: 90% !important;
+      }
+
+      .node.agent { top: 3%; }
+      .node.rtk { top: 17%; }
+      .node.ctx { top: 31%; }
+      .node.agentmemory { top: 47%; }
+      .node.local { top: 63%; }
+      .node.external { top: 77%; }
+      .node.manual { top: 89%; min-height: 70px; }
+
+      svg,
+      .flow-label {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <h1>Memory Stack Map</h1>
+      <p class="lead">context-mode는 현재 작업 격리 분석. RTK는 shell 안전 라우팅. agentmemory는 검증된 결론만 장기 보관.</p>
+    </header>
+
+    <section class="board" aria-label="전체 구조도">
+      <aside class="rail">
+        <h2>Legend</h2>
+        <div class="legend">
+          <div class="legend-item"><span class="swatch green"></span><span>RTK: 명령 rewrite, proxy, shell guard</span></div>
+          <div class="legend-item"><span class="swatch blue"></span><span>context-mode: 큰 출력/파일/웹을 sandbox index로 처리</span></div>
+          <div class="legend-item"><span class="swatch yellow"></span><span>agentmemory: 세션 사이에 남길 장기기억</span></div>
+          <div class="legend-item"><span class="swatch violet"></span><span>local store: 기본 저장 위치</span></div>
+          <div class="legend-item"><span class="swatch red"></span><span>external: 키/mesh 켤 때만 나가는 영역</span></div>
+        </div>
+        <div class="rule">권장 규칙: raw output은 context-mode에서 정제. agentmemory에는 결론만 저장.</div>
+      </aside>
+
+      <section class="panel">
+        <div class="lane-title">Recommended Integration</div>
+        <div class="diagram">
+          <svg viewBox="0 0 1000 662" aria-hidden="true">
+            <defs>
+              <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+                <path d="M2,2 L10,6 L2,10 Z" fill="#252219"></path>
+              </marker>
+              <marker id="arrow-blue" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+                <path d="M2,2 L10,6 L2,10 Z" fill="#2c6f8e"></path>
+              </marker>
+              <marker id="arrow-green" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+                <path d="M2,2 L10,6 L2,10 Z" fill="#3d7b4f"></path>
+              </marker>
+              <marker id="arrow-yellow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+                <path d="M2,2 L10,6 L2,10 Z" fill="#9b7418"></path>
+              </marker>
+              <marker id="arrow-red" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+                <path d="M2,2 L10,6 L2,10 Z" fill="#c83d2f"></path>
+              </marker>
+              <marker id="arrow-violet" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+                <path d="M2,2 L10,6 L2,10 Z" fill="#7a588c"></path>
+              </marker>
+            </defs>
+
+            <path class="arrow green" marker-end="url(#arrow-green)" d="M190 315 C235 230, 245 125, 300 105"></path>
+            <path class="arrow blue" marker-end="url(#arrow-blue)" d="M190 350 C235 380, 250 395, 318 400"></path>
+            <path class="arrow yellow" marker-end="url(#arrow-yellow)" d="M488 385 C545 355, 560 295, 605 280"></path>
+            <path class="arrow violet" marker-end="url(#arrow-violet)" d="M782 276 C820 260, 835 250, 866 248"></path>
+            <path class="arrow red" marker-end="url(#arrow-red)" d="M782 326 C840 382, 855 438, 870 470"></path>
+            <path class="arrow yellow" marker-end="url(#arrow-yellow)" d="M635 505 C560 532, 500 525, 448 455"></path>
+            <path class="arrow" marker-end="url(#arrow)" d="M318 180 C250 250, 230 300, 195 330"></path>
+          </svg>
+
+          <div class="node agent">
+            <span class="tag">User / Agent</span>
+            <h3>Codex Work</h3>
+            <p>질문, 코드 작업, 리뷰, 내부 문서 확인이 여기서 시작됨.</p>
+          </div>
+
+          <div class="node rtk">
+            <span class="tag">Shell Guard</span>
+            <h3>RTK</h3>
+            <p>명령 실행 전 rewrite/proxy. shell 폭주와 잘못된 raw command를 줄임.</p>
+          </div>
+
+          <div class="node ctx">
+            <span class="tag">Current Context</span>
+            <h3>context-mode MCP</h3>
+            <p>큰 파일, 로그, 웹, diff를 sandbox에 인덱싱. 현재 턴 분석용.</p>
+          </div>
+
+          <div class="node agentmemory">
+            <span class="tag">Long Memory</span>
+            <h3>agentmemory</h3>
+            <p>정제된 결정, repo 규칙, 반복되는 실패 원인을 세션 밖으로 보존.</p>
+          </div>
+
+          <div class="node local">
+            <span class="tag">Default</span>
+            <h3>Local Store</h3>
+            <p>기본은 로컬 iii state와 Docker volume. 외부 저장소 아님.</p>
+          </div>
+
+          <div class="node external">
+            <span class="tag">Optional Risk</span>
+            <h3>External APIs</h3>
+            <p>LLM/embedding 키, mesh sync 켜면 외부 전송 가능. 내부 코드면 금지.</p>
+          </div>
+
+          <div class="node manual">
+            <span class="tag">Best Practice</span>
+            <h3>Save Curated Facts Only</h3>
+            <p>raw log 말고 검증된 요약만 agentmemory에 저장.</p>
+          </div>
+
+          <div class="flow-label l1">commands</div>
+          <div class="flow-label l2">large evidence</div>
+          <div class="flow-label l3">curated summary</div>
+          <div class="flow-label l4">default save</div>
+          <div class="flow-label l5">only if configured</div>
+          <div class="flow-label l6">next session recall</div>
+        </div>
+      </section>
+
+      <aside class="risk">
+        <h2>BankX Rule</h2>
+        <ul>
+          <li><strong>auto capture off</strong><br>내부 코드/로그/PR은 훅 자동수집부터 켜면 위험함.</li>
+          <li><strong>no external key</strong><br>API 키 있으면 압축/embedding 단계에서 외부로 갈 수 있음.</li>
+          <li><strong>use context-mode first</strong><br>근거 분석은 context-mode. 장기 저장은 정제 후.</li>
+          <li><strong>secret required</strong><br>REST/MCP 노출 시 `AGENTMEMORY_SECRET` 필수급.</li>
+        </ul>
+      </aside>
+    </section>
+
+    <section class="bottom" aria-label="요약">
+      <article class="take">
+        <h2>지금 역할</h2>
+        <p>context-mode는 작업대. RTK는 안전장치. 둘 다 계속 메인.</p>
+      </article>
+      <article class="take">
+        <h2>추가 역할</h2>
+        <p>agentmemory는 작업대가 아니라 창고. 오래 남길 결론만 넣음.</p>
+      </article>
+      <article class="take">
+        <h2>추천 결론</h2>
+        <p>개인 repo는 OK. 내부 repo는 수동 저장부터. 자동 훅은 나중.</p>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

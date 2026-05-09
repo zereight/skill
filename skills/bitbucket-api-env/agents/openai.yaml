@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bitbucket API Env"
+  short_description: "Use Bitbucket REST through env-injected credentials."
+  default_prompt: "Use bitbucket-api-env to read Bitbucket Cloud through REST API environment variables, without Bitbucket MCP."
