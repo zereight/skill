@@ -1,0 +1,4 @@
+interface:
+  display_name: "Growth Profile"
+  short_description: "Prepare 1on1 STAR cases and Stage evidence."
+  default_prompt: "Use growth-profile to prepare evidence-backed STAR cases, Stage 2-3 calibration, and manager questions for my 1on1."
