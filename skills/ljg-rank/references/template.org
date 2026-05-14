@@ -1,0 +1,11 @@
+#+title:      {분석 대상}
+#+date:       [{YYYY-MM-DD Day HH:MM}]
+#+filetags:   :analysis:
+
+* 결론
+
+* 핵심 요인
+
+* 관계
+
+* 예외
