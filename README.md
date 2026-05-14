@@ -11,6 +11,7 @@ Personal agent skills for code review and React Native development.
 | `zereight-react-native-testing` | RNTL v13/v14 test writing — queries, matchers, userEvent, async patterns |
 | `zereight-react-native` | RN gateway — routes tasks to the right specialist skill |
 | `zereight-goal` | Strategy hardening — loopholes, fixes, verification, confidence gate |
+| `growth-profile` | 1on1 growth profile — STAR cases, Stage 2-3 evidence, manager questions |
 | `addy` | Addy Osmani agent-skills entrypoint — routes to locally installed `addy-*` skills |
 
 ## LJG Skills
@@ -98,6 +99,10 @@ RN development gateway. Routes tasks to the right specialist skill (basics, anim
 ### zereight-goal
 
 Strategy hardening loop for goals and plans. Finds loopholes, separates required fixes from cleanup, verifies evidence, and only claims confidence within checked scope.
+
+### growth-profile
+
+1on1 preparation workflow for competency profiling. Builds evidence-backed STAR cases, Stage 2-3 calibration, manager talking points, weak-evidence checks, and follow-up questions.
 
 ### addy
 
