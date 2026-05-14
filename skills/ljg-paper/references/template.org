@@ -1,0 +1,20 @@
+#+title:      {핵심 아이디어}
+#+subtitle:   {원 논문 제목}
+#+date:       [{YYYY-MM-DD Day HH:MM}]
+#+filetags:   :paper:
+#+identifier: {YYYYMMDDTHHMMSS}
+#+source:     {URL 또는 출처}
+#+authors:    {저자}
+#+venue:      {학회/저널/연도}
+
+* 한 줄 결론
+
+* 문제가 뭐였나
+
+* 저자는 어떻게 풀었나
+
+* 결과가 말해주는 것
+
+* 가져갈 아이디어
+
+* 약점과 남은 질문

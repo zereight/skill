@@ -1,0 +1,14 @@
+#+title:      {연구 흐름 제목}
+#+date:       [{YYYY-MM-DD Day HH:MM}]
+#+filetags:   :paper:lineage:
+#+identifier: {YYYYMMDDTHHMMSS}
+
+* 기준 논문
+
+* 이전 연구
+
+* 전환점
+
+* 이후 연구
+
+* 읽을 순서

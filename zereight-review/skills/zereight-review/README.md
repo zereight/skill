@@ -1,6 +1,6 @@
 # zereight-review
 
-CodeRabbit-style code review skill focused on **logic correctness and edge cases**.
+code review skill focused on **logic correctness and edge cases**.
 Prioritizes correctness and risk over style nitpicks.
 
 For React Native PRs, run alongside `zereight-react-native-optimizer`.
