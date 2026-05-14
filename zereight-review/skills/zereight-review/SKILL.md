@@ -1,6 +1,6 @@
 ---
 name: zereight-review
-description: Comprehensive code review skill for practical PR feedback. Use for feature, bugfix, and refactor reviews. Prioritizes correctness, edge cases, logic invariants, fallback-chain safety, async state transitions, architecture analysis, OWASP security, and clear actionable feedback in concise CodeRabbit-style format.
+description: Comprehensive code review skill for practical PR feedback. Use for feature, bugfix, and refactor reviews. Prioritizes correctness, edge cases, logic invariants, fallback-chain safety, async state transitions, architecture analysis, OWASP security, and clear actionable feedback.
 ---
 
 # zereight-review
@@ -24,7 +24,6 @@ Required instruction sources to load before reviewing:
 - `code-reviewer`
 - `agent-skills:code-review-and-quality`
 - `agent-skills:using-agent-skills`
-- `coderabbit:code-review`
 
 Required subagent review passes:
 
@@ -35,7 +34,6 @@ Required subagent review passes:
 | File coverage reviewer | `code-reviewer` | every changed file and hunk, missing tests, maintainability risks |
 | Quality gate reviewer | `agent-skills:code-review-and-quality` | correctness, reliability, maintainability, security, test quality |
 | Agent orchestration reviewer | `agent-skills:using-agent-skills` | whether the work was split correctly and whether any review lens is missing |
-| CodeRabbit-style reviewer | `coderabbit:code-review` | concise inline-comment style, priority calibration, actionable PR feedback |
 | Zereight coordinator | this skill | three-dot diff, RED-team mindset, verification discipline, final synthesis |
 
 Execution rules:
@@ -45,21 +43,6 @@ Execution rules:
   repository path, and the relevant instruction sources.
 - Every subagent must follow the repo `AGENTS.md` and global Codex instructions
   in addition to its review skill.
-- For the `coderabbit:code-review` pass, prefer running CodeRabbit CLI instead
-  of only emulating its style. Before running it, switch the working tree to the
-  PR source branch at the latest `origin` state, even when a local branch with
-  the same name already exists. Local branches may be stale.
-  - Fetch the exact source and target branches from origin.
-  - Check out the PR source branch from `origin/<source-branch>` in a way that
-    discards only stale local branch position, not unrelated user work.
-  - Verify the review range with an exact three-dot diff against
-    `refs/remotes/origin/<target-branch>` before invoking CodeRabbit.
-  - Invoke CodeRabbit with the target branch/base explicitly when the CLI
-    supports it.
-  - If CodeRabbit reports usage limits, quota exhaustion, authentication limits,
-    or rate limits, record that blocker and continue the ensemble without the
-    CodeRabbit CLI result. In that case, the `coderabbit:code-review` pass may
-    fall back to manual CodeRabbit-style priority calibration and wording.
 - Do not return the final review until every required pass has either completed
   or is explicitly blocked. If a required skill or subagent tool is unavailable,
   stop and report the blocker instead of silently skipping it.
@@ -431,7 +414,7 @@ Minimum matrix dimensions:
 
 If matrix reveals broken invariant, report as at least **Medium**.
 
-## Review types (CodeRabbit style)
+## Review types
 
 Label every finding with a type:
 
@@ -439,7 +422,7 @@ Label every finding with a type:
 - 🛠️ **Refactor suggestion** — maintainability, performance, cleaner abstraction
 - 🧹 **Nitpick** — minor style/naming (only in "thorough" mode, not default)
 
-## Severity levels (CodeRabbit style)
+## Severity levels
 
 Each finding gets a severity icon:
 
@@ -459,13 +442,27 @@ For each issue, include:
 4. **Evidence** `file:line` — short snippet
 5. **Minimal fix** (smallest safe change, preferably a code snippet)
 
-## Output template
+## Output Language and Style
 
-1. `High-Level Summary` (2-4 lines)
-2. `✅ What’s good` (2-4 bullets, cite specific patterns not generic praise)
-3. `⚠️ Findings` (ordered 🔴→🟠→🟡→🔵, max 5 unless critical)
-4. `Case Matrix` (only when fallback/merge logic exists)
-5. `🎯 Verdict` (`Approve` | `Approve with comments` | `Request changes`)
+Default final review output must be Korean unless the user explicitly asks for another language.
+
+Write findings in plain Korean, not terse English review jargon. Keep technical terms only when needed, and explain them briefly.
+
+Use this output order:
+1. `전체 요약`
+2. `좋은 점`
+3. `리뷰 코멘트`
+4. `파일별 리뷰 결과`
+5. `검증 결과`
+
+For each finding, use these sections:
+- 위치
+- 조건
+- 문제
+- 영향
+- 최소 수정
+
+Do not provide only an English-style table. The final synthesis must be understandable to Korean engineers who want practical review comments.
 
 ## Review behavior rules
 

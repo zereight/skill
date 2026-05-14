@@ -1,0 +1,3 @@
+interface:
+  display_name: "Chorus Review"
+  short_description: "Explicit-only cost-aware Chorus review using Codex xhigh, Gemini, and Claude when healthy"
