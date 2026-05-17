@@ -51,12 +51,24 @@ Use this skill when the user asks to:
 
 Use server `bitbucket`.
 
-- Metadata: `bb_get_pr`
-- Comments: `bb_ls_pr_comments`
-- Branch diff: `bb_diff_branches`
-- BankX common identifiers:
-  - `workspaceSlug=bank-x`
-  - `repoSlug=mobile-app-workspace`
+**Fast path for PR review:**
+
+1. PR metadata + diff:
+   `bb_get_pr(workspaceSlug=bank-x, repoSlug=mobile-app-workspace, prId=<ID>, includeFullDiff=true)`
+2. Comments:
+   `bb_ls_pr_comments(workspaceSlug=bank-x, repoSlug=mobile-app-workspace, prId=<ID>)`
+3. Branch diff (alternate):
+   `bb_diff_branches(workspaceSlug=bank-x, repoSlug=mobile-app-workspace, sourceBranch=<src>, destinationBranch=<dst>)`
+4. Source files:
+   `bb_get_file(workspaceSlug=bank-x, repoSlug=mobile-app-workspace, filePath=<path>, revision=<commit>)`
+
+BankX common identifiers:
+- `workspaceSlug=bank-x`
+- `repoSlug=mobile-app-workspace`
+- `prId` is a string, not integer
+
+When git diff is unavailable (review mode), prefer mcporter for all reads.
+Only fall back to git after mcporter failure.
 
 ### Atlassian Docs
 
