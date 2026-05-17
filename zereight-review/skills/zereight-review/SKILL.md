@@ -8,12 +8,10 @@ description: Comprehensive code review skill for practical PR feedback. Use for 
 Prioritize **correctness and risk** over style nitpicks.
 Default tone: concise, direct, actionable.
 
-## Mandatory Review Ensemble -- NON-NEGOTIABLE
+## Standard Review Flow
 
 When the user invokes `zereight-review`, `$zereight-review`, or asks to use the
-Zereight review skill, do not complete the review from a single reviewer pass.
-You must run a multi-skill, subagent-based review ensemble first, then synthesize
-the results.
+Zereight review skill, follow this single Standard review mode.
 
 Required instruction sources to load before reviewing:
 
@@ -25,39 +23,101 @@ Required instruction sources to load before reviewing:
 - `agent-skills:code-review-and-quality`
 - `agent-skills:using-agent-skills`
 
-Required subagent review passes:
+### Phase 1: MCP-first PR metadata & diff
 
-| Subagent pass | Required basis | Review focus |
-| --- | --- | --- |
-| Baseline full-diff reviewer | `code-review` | finding-first output, severity, full diff coverage, `comment-worthy` / `no comment` |
-| Regression and contract reviewer | `code-review-expert` | behavioral regressions, API/prop contracts, hidden state and edge-case risk |
-| File coverage reviewer | `code-reviewer` | every changed file and hunk, missing tests, maintainability risks |
-| Quality gate reviewer | `agent-skills:code-review-and-quality` | correctness, reliability, maintainability, security, test quality |
-| Agent orchestration reviewer | `agent-skills:using-agent-skills` | whether the work was split correctly and whether any review lens is missing |
-| Zereight coordinator | this skill | three-dot diff, RED-team mindset, verification discipline, final synthesis |
+1. Read PR metadata via MCP (Bitbucket: `bb_get_pr`, `bb_ls_pr_comments`).
+2. Extract: PR id, source branch, target branch, source commit hash, target commit hash, full diff, existing comments.
+3. If MCP is unavailable: **stop and report** — do not silently fall back to git.
+4. Save the raw diff for reference (do not load full diff into main context; use context-mode indexing or summary).
 
-Execution rules:
+### Phase 2: Branch freshness gate
 
-- Spawn separate subagents for the required review passes whenever the runtime
-  supports subagents. Give each subagent the exact PR/range, target branch,
-  repository path, and the relevant instruction sources.
-- Every subagent must follow the repo `AGENTS.md` and global Codex instructions
-  in addition to its review skill.
-- Do not return the final review until every required pass has either completed
-  or is explicitly blocked. If a required skill or subagent tool is unavailable,
-  stop and report the blocker instead of silently skipping it.
-- Keep raw diff output out of the conversation context when possible. Prefer
-  context-mode indexing/search for large diffs, and use three-dot diff against
-  the target branch.
-- All review subagents must use Codex-backed Pi builtin subagents (`reviewer`,
-  `worker`, `delegate`). Do not route review passes through Claude, Claude Code,
-  Chorus, or any Claude-backed external agent unless the user explicitly
-  requests the Claude provider.
-- If a subagent attempt fails because Claude quota is exhausted or Claude
-  transport is unavailable, stop that route immediately. Retry once with a
-  Codex-backed Pi builtin subagent. Do not retry Claude-backed paths.
+Before creating any local state:
 
-Review preflight safeguards:
+```bash
+git fetch origin <source-branch> <target-branch>
+```
+
+Compare MCP source commit hash vs `refs/remotes/origin/<source-branch>`:
+
+- Same → proceed.
+- Different → re-fetch once. If still different → **stop and report**: "PR commit hash mismatch — review aborted."
+
+### Phase 3: Review worktree isolation
+
+Create a detached worktree pinned to the exact source commit:
+
+```bash
+git worktree add --detach \
+  .worktrees/review-pr-<PR_ID>-<SHORT_SHA> \
+  <source_commit>
+```
+
+- Verify `.worktrees/` is in `.gitignore` before creating.
+- The worktree is read-only for the review — do not modify source.
+- At the end of the review, report the worktree path (user may clean up manually).
+
+### Phase 4: CodeGraph-assisted scoping
+
+Inside the review worktree:
+
+```bash
+# 4a. Initialize or sync CodeGraph
+codegraph status 2>/dev/null || codegraph init -i
+codegraph sync
+
+# 4b. Find affected test files
+git diff --name-only refs/remotes/origin/<target>...HEAD \
+  | codegraph affected --stdin --quiet
+
+# 4c. Build compact review context (optional, only when broad impact expected)
+codegraph context "Review PR <PR_ID>: <summary>" \
+  --format markdown --max-nodes 20
+```
+
+CodeGraph is a **scoping aid only**:
+
+- Use it to discover related symbols, impact radius, and affected tests.
+- Use it to narrow which files to read next.
+- **Do not** write findings based solely on CodeGraph output.
+- Every finding must cite the actual changed file/hunk or verified source line.
+
+### Phase 5: Zereight coordinator review
+
+The main reviewer (this skill) performs the full review:
+
+1. Read the MCP diff — inspect every changed hunk.
+2. Use CodeGraph scoping results to guide additional file reads (symbols, callers, callees).
+3. Apply all mandatory logic checks, security checks, and architecture checks.
+4. Decide `comment-worthy` or `no comment` for each changed file.
+5. Write findings with hard evidence from diff or verified source lines.
+
+**Subagent escalation** — only when deeper verification is needed.
+See [Subagent escalation triggers](#subagent-escalation-triggers).
+
+Synthesis rules:
+
+- Merge findings from subagent passes (if any) into one final review.
+- De-duplicate overlapping findings and keep the strongest, most concrete reference.
+- If reviewers disagree, state the disagreement briefly and choose the outcome supported by code evidence.
+- Preserve whole-diff coverage by listing changed files as `comment-worthy` or `no comment`.
+- Lead with actionable findings ordered by severity. Keep summaries secondary.
+
+Execution guardrails:
+
+- Keep raw diff output out of the conversation context when possible. Prefer context-mode indexing/search for large diffs, and use three-dot diff against the target branch.
+- All review subagents must use Codex-backed Pi builtin subagents (`reviewer`, `worker`, `delegate`). Do not route review passes through Claude, Claude Code, Chorus, or any Claude-backed external agent unless the user explicitly requests the Claude provider.
+- If a subagent attempt fails because Claude quota is exhausted or Claude transport is unavailable, stop that route immediately. Retry once with a Codex-backed Pi builtin subagent. Do not retry Claude-backed paths.
+
+### Phase 6: Final freshness check
+
+**Right before writing the final review output**, re-read the PR metadata via MCP
+(`bb_get_pr` — without full diff, lightweight). Compare source commit hash:
+
+- Same → proceed.
+- Changed → **stop and report**: "PR commit changed during review — re-scoping required."
+
+### Review preflight safeguards
 
 - RTK command rewrites can fail silently for simple read commands such as
   `rtk rewrite "sed ..."`. If that happens, do not stall the review. Use the
@@ -81,16 +141,26 @@ Review preflight safeguards:
   ambiguous ref caused an unexpectedly large diff, discard that result and
   restart scoping from the full-ref three-dot diff.
 
-Synthesis rules:
+## Subagent escalation triggers
 
-- Merge findings from all subagents into one final review.
-- De-duplicate overlapping findings and keep the strongest, most concrete file
-  and line reference.
-- If reviewers disagree, state the disagreement briefly and choose the outcome
-  supported by code evidence.
-- Preserve whole-diff coverage by listing changed files as `comment-worthy` or
-  `no comment`.
-- Lead with actionable findings ordered by severity. Keep summaries secondary.
+Subagents are **escalation tools**, not mandatory passes. Only spawn a focused
+subagent when one or more of these conditions apply:
+
+- Major/Minor severity decision is ambiguous — need a second pair of eyes.
+- React, RN, Reanimated, or library behavior requires independent verification.
+- Payment, authentication, security, PII, or financial flow logic is involved.
+- Async race, fallback chain, or state transition complexity is high.
+- CodeGraph impact radius is broad across multiple modules or services.
+- Public API / type contract / data model is being changed.
+- Diff exceeds practical solo-review thresholds (e.g., >10 files or >500 lines).
+- User explicitly requests "thorough", "full review", or "철저히 봐줘".
+
+When spawning a subagent:
+
+- Assign one focused lens per subagent (e.g., "security only", "contract only").
+- Do not spawn every possible pass — spawn only what the current PR needs.
+- Include the PR metadata, source/target commit, repo path, and the specific review focus in the subagent prompt.
+- Subagents may use CodeGraph within their scope for efficient discovery.
 
 ## RED Team Mindset -- MANDATORY
 
@@ -189,34 +259,94 @@ Review every PR as if you are going to leave inline comments on the full diff, e
 
 ## Workflow -- always follow this sequence
 
-### Step 1: Fetch and diff against origin/develop (THREE-DOT DIFF)
+### Step 1: MCP-first PR read → freshness gate → worktree → CodeGraph → diff
 
 **CRITICAL: Always use three-dot diff (`...`) not two-dot diff (`..`).**
-Two-dot diff includes changes from the target branch that were merged after the PR branch was created, producing false positives. Three-dot diff shows only changes introduced on the PR branch (merge-base diff) -- this matches what Bitbucket/GitHub PR pages display.
 
-### For Bitbucket repos with mcporter configured (preferred)
-When git commands are blocked (e.g., read-only review mode), fetch the diff
-via mcporter Bitbucket MCP first:
-
-- PR metadata + diff: `mcporter call bitbucket.bb_get_pr workspaceSlug=<ws> repoSlug=<repo> prId=<PR_ID> includeFullDiff=true`
-- Comments: `mcporter call bitbucket.bb_ls_pr_comments workspaceSlug=<ws> repoSlug=<repo> prId=<PR_ID>`
-- Source files: `mcporter call bitbucket.bb_get_file workspaceSlug=<ws> repoSlug=<repo> filePath=<path>`
-- Fall back to git when mcporter is unavailable or fails.
-
-### For direct git access (fallback)
+#### 1a. MCP로 PR 정보 읽기 (Phase 1)
 
 ```bash
-git fetch origin
-git diff origin/develop...HEAD --stat
-git diff origin/develop...HEAD
+# PR metadata + diff
+mcporter call bitbucket.bb_get_pr \
+  workspaceSlug=<ws> repoSlug=<repo> \
+  prId=<PR_ID> includeFullDiff=true
+
+# Comments
+mcporter call bitbucket.bb_ls_pr_comments \
+  workspaceSlug=<ws> repoSlug=<repo> prId=<PR_ID>
+
+# Source files (as needed)
+mcporter call bitbucket.bb_get_file \
+  workspaceSlug=<ws> repoSlug=<repo> filePath=<path>
 ```
 
-Reference script: `references/three-dot-diff.sh` (supports custom target branch and output modes).
+확보할 정보: PR ID, source/target branch, source commit hash, target commit hash, full diff, comments.
 
-- Use `--stat` first to get the full list of changed files.
-- Then read the full diff to understand every change.
-- If the branch is behind origin/develop, note it but still proceed with the diff.
-- If the diff looks unexpectedly large, verify you are using `...` (three dots) not `..` (two dots).
+MCP 실패 시 → **중단**. git으로 fallback하지 않음.
+
+#### 1b. Branch freshness gate (Phase 2)
+
+```bash
+git fetch origin <source-branch> <target-branch>
+```
+
+MCP source commit hash와 `refs/remotes/origin/<source-branch>` 비교:
+
+- 일치 → 진행
+- 불일치 → 다시 fetch 후 재확인. 여전히 다르면 **중단 보고**
+
+#### 1c. Review worktree 생성 (Phase 3)
+
+```bash
+git worktree add --detach \
+  .worktrees/review-pr-<PR_ID>-<SHORT_SHA> \
+  <source_commit>
+```
+
+- detached HEAD로 생성하여 PR branch 실수 수정 방지
+- `.worktrees/` ignored 확인
+
+#### 1d. CodeGraph 초기화 및 스코핑 (Phase 4)
+
+worktree 디렉토리에서 실행:
+
+```bash
+# 상태 확인 및 초기화
+codegraph status 2>/dev/null || codegraph init -i
+codegraph sync
+
+# 영향받는 테스트 파일 탐색
+git diff --name-only refs/remotes/origin/<target>...HEAD \
+  | codegraph affected --stdin --quiet
+
+# 관련 코드 컨텍스트 (broad impact 예상 시만)
+codegraph context "Review PR <PR_ID>: <changed files summary>" \
+  --format markdown --max-nodes 20
+```
+
+#### 1e. Diff 확보 및 교차 검증
+
+MCP diff를 기준으로 사용. git three-dot diff로 검증:
+
+```bash
+git diff refs/remotes/origin/<target>...HEAD --stat
+git diff refs/remotes/origin/<target>...HEAD
+```
+
+- MCP diff와 git diff의 changed file 목록이 일치하는지 확인
+- 불일치 시 MCP diff 우선
+
+#### 1f. Scoping 결과 정리
+
+CodeGraph 및 diff 분석 결과를 요약:
+
+- 주요 symbol changes
+- 영향받는 caller/callee
+- Affected test candidates
+- 추가로 읽어야 할 파일 후보
+
+Full diff와 CodeGraph output을 main context에 통째로 붙이지 않음.
+요약만 유지하고 필요한 파일만 선택적으로 read.
 
 ### Step 2: Understand codebase context
 
