@@ -49,6 +49,13 @@ Execution rules:
 - Keep raw diff output out of the conversation context when possible. Prefer
   context-mode indexing/search for large diffs, and use three-dot diff against
   the target branch.
+- All review subagents must use Codex-backed Pi builtin subagents (`reviewer`,
+  `worker`, `delegate`). Do not route review passes through Claude, Claude Code,
+  Chorus, or any Claude-backed external agent unless the user explicitly
+  requests the Claude provider.
+- If a subagent attempt fails because Claude quota is exhausted or Claude
+  transport is unavailable, stop that route immediately. Retry once with a
+  Codex-backed Pi builtin subagent. Do not retry Claude-backed paths.
 
 Review preflight safeguards:
 
@@ -187,7 +194,16 @@ Review every PR as if you are going to leave inline comments on the full diff, e
 **CRITICAL: Always use three-dot diff (`...`) not two-dot diff (`..`).**
 Two-dot diff includes changes from the target branch that were merged after the PR branch was created, producing false positives. Three-dot diff shows only changes introduced on the PR branch (merge-base diff) -- this matches what Bitbucket/GitHub PR pages display.
 
-Before reading any file, run:
+### For Bitbucket repos with mcporter configured (preferred)
+When git commands are blocked (e.g., read-only review mode), fetch the diff
+via mcporter Bitbucket MCP first:
+
+- PR metadata + diff: `mcporter call bitbucket.bb_get_pr workspaceSlug=<ws> repoSlug=<repo> prId=<PR_ID> includeFullDiff=true`
+- Comments: `mcporter call bitbucket.bb_ls_pr_comments workspaceSlug=<ws> repoSlug=<repo> prId=<PR_ID>`
+- Source files: `mcporter call bitbucket.bb_get_file workspaceSlug=<ws> repoSlug=<repo> filePath=<path>`
+- Fall back to git when mcporter is unavailable or fails.
+
+### For direct git access (fallback)
 
 ```bash
 git fetch origin
