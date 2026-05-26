@@ -8,117 +8,253 @@ description: Comprehensive code review skill for practical PR feedback. Use for 
 Prioritize **correctness and risk** over style nitpicks.
 Default tone: concise, direct, actionable.
 
-## Standard Review Flow
+## Mandatory Review Ensemble -- NON-NEGOTIABLE
 
 When the user invokes `zereight-review`, `$zereight-review`, or asks to use the
-Zereight review skill, follow this single Standard review mode.
+Zereight review skill, do not complete the review from a single reviewer pass.
+You must run a multi-skill, subagent-based review ensemble first, then synthesize
+the results.
 
 Required instruction sources to load before reviewing:
 
 - Nearest repo `AGENTS.md`
 - `/Users/tao.exe/.codex/instructions.md`
+- `/Users/tao.exe/.codex/AGENTS.md`
+- `codegraph-review-routing` when CodeGraph MCP is available or the review needs impact/call-chain context
 - `code-review`
 - `code-review-expert`
 - `code-reviewer`
 - `agent-skills:code-review-and-quality`
 - `agent-skills:using-agent-skills`
+- `thermo-nuclear-code-quality-review`
 
-### Phase 1: MCP-first PR metadata & diff
+Required subagent review passes:
 
-1. Read PR metadata via MCP (Bitbucket: `bb_get_pr`, `bb_ls_pr_comments`).
-2. Extract: PR id, source branch, target branch, source commit hash, target commit hash, full diff, existing comments.
-3. If MCP is unavailable: **stop and report** — do not silently fall back to git.
-4. Save the raw diff for reference (do not load full diff into main context; use context-mode indexing or summary).
+| Subagent pass | Builtin agent | Model (required) | Required basis | Review focus |
+| --- | --- | --- | --- | --- |
+| Baseline full-diff reviewer | `reviewer` | `opencode-go/deepseek-v4-pro` | `code-review` | finding-first output, severity, full diff coverage, `comment-worthy` / `no comment` |
+| Regression and contract reviewer | `reviewer` | `opencode-go/deepseek-v4-pro` | `code-review-expert` | behavioral regressions, API/prop contracts, hidden state and edge-case risk |
+| File coverage reviewer | `worker` | `opencode-go/deepseek-v4-flash` | `code-reviewer` | every changed file and hunk, missing tests, maintainability risks |
+| Quality gate reviewer | `worker` | `opencode-go/deepseek-v4-flash` | `agent-skills:code-review-and-quality` | correctness, reliability, maintainability, security, test quality |
+| Thermo-nuclear maintainability reviewer | `reviewer` | `opencode-go/deepseek-v4-pro` | `thermo-nuclear-code-quality-review` | code judo / structural simplification, 1k-line boundary, spaghetti branching, abstraction quality, layer boundaries |
+| Agent orchestration reviewer | `delegate` | `opencode-go/deepseek-v4-flash` | `agent-skills:using-agent-skills` | whether the work was split correctly and whether any review lens is missing (including thermo-nuclear pass) |
+| Zereight coordinator | (parent) | parent session model | this skill | three-dot diff, RED-team mindset, verification discipline, final synthesis |
 
-### Phase 2: Branch freshness gate
+## Ensemble model policy — MANDATORY
 
-Before creating any local state:
+Zereight review subagents use **only** these models unless the user explicitly
+requests a different provider:
 
-```bash
-git fetch origin <source-branch> <target-branch>
+| Model | Use for |
+| --- | --- |
+| `opencode-go/deepseek-v4-pro` | Baseline + Regression (`reviewer`) — deeper reasoning, contract/regression analysis |
+| `opencode-go/deepseek-v4-flash` | File coverage + Quality gate (`worker`), Orchestration (`delegate`) — breadth, five-axis gate, meta review |
+| `cursor/composer-2.5` | **Last-resort fallback** when OpenCode Go fails (429, quota, rate limit) — matches `defaultProvider`/`defaultModel` in `~/.pi/agent/settings.json` |
+
+**Ordered fallback chain (pi-subagents auto-retries on 429/quota):**
+
+| Agent | Primary | Then | Last resort |
+| --- | --- | --- | --- |
+| `reviewer` | `deepseek-v4-pro` | `deepseek-v4-flash` | `cursor/composer-2.5` |
+| `worker` | `deepseek-v4-flash` | `deepseek-v4-pro` | `cursor/composer-2.5` |
+| `delegate` | `deepseek-v4-flash` | `deepseek-v4-pro` | `cursor/composer-2.5` |
+
+Configured in `~/.pi/agent/settings.json` → `subagents.agentOverrides.*.fallbackModels`.
+pi-subagents treats 429 / rate-limit / quota errors as retryable and walks this list automatically.
+
+**Never rely on builtin default models** (`claude-sonnet-4-6`, `openai-codex/gpt-5.3-codex`, etc.).
+User-level overrides live in `~/.pi/agent/settings.json` under
+`subagents.agentOverrides`, but **still pass `model` on every spawn** so the
+runtime cannot fall back to Claude when quota is exhausted.
+
+Execution rules:
+
+- Spawn separate subagents for the required review passes whenever the runtime
+  supports subagents. Give each subagent the exact PR/range, target branch,
+  repository path, the relevant instruction sources, and the **model from the
+  table above**.
+- Every subagent must follow the repo `AGENTS.md` and global Codex instructions
+  in addition to its review skill.
+- Do not return the final review until every required pass has either completed
+  or is explicitly blocked.
+- All review subagents must use Pi builtin agents (`reviewer`, `worker`,
+  `delegate`) with an explicit `model` parameter. **Do not** spawn without
+  `model` — builtin `worker` defaults to Claude and will burn quota.
+- **Do not** route review passes through Claude, Claude Code, Chorus, or any
+  Claude-backed external agent unless the user explicitly requests Claude.
+- If a subagent fails with provider/model/quota errors (including **429** from
+  OpenCode Go), pi-subagents retries the ordered `fallbackModels` chain in
+  settings: paired DeepSeek (`pro` ↔ `flash`), then **`cursor/composer-2.5`**
+  (session default). Do not retry Claude paths unless the user explicitly
+  requests Claude.
+- If spawn still fails after the full chain, report which models were attempted
+  and continue synthesis from completed passes — do not block the final review.
+
+**Parallel spawn example (pi-subagents / `subagent` tool):**
+
+```json
+{
+  "tasks": [
+    {
+      "agent": "reviewer",
+      "model": "opencode-go/deepseek-v4-pro",
+      "task": "Baseline full-diff review. Skill: code-review. PR: ..."
+    },
+    {
+      "agent": "reviewer",
+      "model": "opencode-go/deepseek-v4-pro",
+      "task": "Regression and contract review. Skill: code-review-expert. PR: ..."
+    },
+    {
+      "agent": "worker",
+      "model": "opencode-go/deepseek-v4-flash",
+      "task": "File coverage review. Skill: code-reviewer. PR: ..."
+    },
+    {
+      "agent": "worker",
+      "model": "opencode-go/deepseek-v4-flash",
+      "task": "Quality gate review. Skill: code-review-and-quality. PR: ..."
+    },
+    {
+      "agent": "reviewer",
+      "model": "opencode-go/deepseek-v4-pro",
+      "task": "Thermo-nuclear maintainability review. Skill: thermo-nuclear-code-quality-review. PR: ..."
+    }
+  ],
+  "concurrency": 5
+}
 ```
 
-Compare MCP source commit hash vs `refs/remotes/origin/<source-branch>`:
+Then spawn orchestration separately:
 
-- Same → proceed.
-- Different → re-fetch once. If still different → **stop and report**: "PR commit hash mismatch — review aborted."
-
-### Phase 3: Review worktree isolation
-
-Create a detached worktree pinned to the exact source commit:
-
-```bash
-git worktree add --detach \
-  .worktrees/review-pr-<PR_ID>-<SHORT_SHA> \
-  <source_commit>
+```json
+{
+  "agent": "delegate",
+  "model": "opencode-go/deepseek-v4-flash",
+  "task": "Orchestration review: verify all ensemble axes were covered. ..."
+}
 ```
 
-- Verify `.worktrees/` is in `.gitignore` before creating.
-- The worktree is read-only for the review — do not modify source.
-- At the end of the review, report the worktree path (user may clean up manually).
+**Final synthesis must list models used**, e.g. `reviewer ×3 (deepseek-v4-pro),
+worker ×2 (deepseek-v4-flash), delegate (deepseek-v4-flash)`.
 
-### Phase 4: CodeGraph-assisted scoping
+**Single-pass fallback (subagent unavailable):** If the runtime does not support
+subagent spawning AND the user explicitly approves (e.g., by switching to
+/review mode, stating "fallback" or "single pass"), skip the ensemble and
+do a thorough self-contained review instead. Requirements:
+  1. State that subagent ensemble is unavailable.
+  2. Confirm user approval (explicit wording or known review-mode flag).
+  3. Still load all six reviewer instruction sources sequentially (including
+     `thermo-nuclear-code-quality-review`).
+  4. Cover all ensemble axes in one pass: correctness, security, regression,
+     architecture/contracts, clean code, thermo-nuclear maintainability.
+  5. Apply full-diff coverage, RED-team mindset, and verification discipline.
+  6. If the user did NOT approve fallback, stop and report the blocker.
 
-Inside the review worktree:
+## Subagent Failure Budget — MANDATORY
+
+Subagent claims are not primary evidence. A claim becomes a finding only
+after current-turn primary evidence (diff, file contents, tests, CI logs,
+rtk-grepped source, or reproducible output) confirms it.
+
+Rules:
+
+1. A subagent failure or stuck verification is not a blocker — it is a
+   signal to move on.
+2. If a verification path (e.g., live API call, official docs fetch) fails
+   once, retry at most once **only when** the result is necessary for a
+   P0/P1 decision.
+3. If the same verification path fails 2 times total, stop pursuing it
+   immediately. Do not try a third approach.
+4. If 2+ subagent/verification attempts fail for the same claim, treat
+   the claim as **unusable** for review purposes. Either discard it or
+   note it as unverified residual risk — never as a blocker.
+5. Never spend more than one bounded verification pass on any P2/🟡 Minor
+   or lower concern.
+6. When verification fails without logs, state "unverified; not used as
+   blocker" and continue producing the final review.
+7. Do not block the final review waiting for a subagent or verification
+   to complete. Synthesize from what is already available, mark any gaps,
+   and deliver.
+
+If subagent spawning IS available, use it — do NOT default to single-pass.
+- Keep raw diff output out of the conversation context when possible. Prefer
+  context-mode indexing/search for large diffs, and use three-dot diff against
+  the target branch.
+
+## MCP transport — mcporter CLI only (MANDATORY)
+
+Zereight review **never** treats Cursor/Codex native MCP (`mcp_get_tools`,
+`mcp_call_tool`, MCP panel server list) as the source of truth for mcporter
+inventory. Those lists read `~/.cursor/mcp.json` / `~/.codex/config.toml` and
+can be empty even when `~/.mcporter/mcporter.jsonc` has healthy servers.
+
+### Canonical registry and invocation
+
+| Concern | Source of truth | How to invoke |
+| --- | --- | --- |
+| Server inventory | `~/.mcporter/mcporter.jsonc` | `mcporter list` or `mcporter list <server>` |
+| Tool schema | mcporter | `mcporter list <server> --schema` (when needed) |
+| Tool execution | mcporter CLI | `mcporter call <server>.<tool> ...` |
+
+**Always** run MCP tools for this skill through the shell, e.g.:
 
 ```bash
-# 4a. Initialize or sync CodeGraph
-codegraph status 2>/dev/null || codegraph init -i
-codegraph sync
-
-# 4b. Find affected test files
-git diff --name-only refs/remotes/origin/<target>...HEAD \
-  | codegraph affected --stdin --quiet
-
-# 4c. Build compact review context (optional, only when broad impact expected)
-codegraph context "Review PR <PR_ID>: <summary>" \
-  --format markdown --max-nodes 20
+mcporter call fuck-u-code.analyze \
+  path="<bounded-path>" \
+  format=json top=15 verbose=false
 ```
 
-CodeGraph is a **scoping aid only**:
+Do **not** substitute `mcp_call_tool` for `mcporter call` during review.
 
-- Use it to discover related symbols, impact radius, and affected tests.
-- Use it to narrow which files to read next.
-- **Do not** write findings based solely on CodeGraph output.
-- Every finding must cite the actual changed file/hunk or verified source line.
+### Cursor / Codex exposure (mcporter-bridge)
 
-### Phase 5: Zereight coordinator review
+Register **`mcporter-bridge`** in `~/.cursor/mcp.json` (and optionally
+`~/.codex/config.toml`) when the user wants the **full mcporter inventory**
+visible in the IDE MCP UI. Use the pipx binary path, not
+`python3 -m mcporter_bridge` (often missing):
 
-The main reviewer (this skill) performs the full review:
+```json
+"mcporter-bridge": {
+  "command": "/Users/tao.exe/.local/bin/mcporter-bridge",
+  "args": []
+}
+```
 
-1. Read the MCP diff — inspect every changed hunk.
-2. Use CodeGraph scoping results to guide additional file reads (symbols, callers, callees).
-3. Apply all mandatory logic checks, security checks, and architecture checks.
-4. Decide `comment-worthy` or `no comment` for each changed file.
-5. Write findings with hard evidence from diff or verified source lines.
+Bridge exposes discovery/call helpers (`mcporter_list_servers`,
+`mcporter_call_tool`, etc.). Even with bridge loaded, **zereight-review
+preflight and PR fetches still use `mcporter call` directly** — bridge is for
+human/IDE visibility, not the review execution path.
 
-**Subagent escalation** — only when deeper verification is needed.
-See [Subagent escalation triggers](#subagent-escalation-triggers).
+### Availability mistakes to avoid
 
-Synthesis rules:
+| Wrong check | Why it fails | Correct check |
+| --- | --- | --- |
+| `mcp_get_tools` shows no `fuck-u-code` | Cursor `mcp.json` may omit servers | `mcporter list fuck-u-code` |
+| Memory from prior session | Config changes across reloads | Fresh `mcporter list` each review |
+| Assuming reload fixed MCP | Reload does not import `mcporter.jsonc` into Cursor | CLI `mcporter list` + optional `mcp.json` edit |
 
-- Merge findings from subagent passes (if any) into one final review.
-- De-duplicate overlapping findings and keep the strongest, most concrete reference.
-- If reviewers disagree, state the disagreement briefly and choose the outcome supported by code evidence.
-- Preserve whole-diff coverage by listing changed files as `comment-worthy` or `no comment`.
-- Lead with actionable findings ordered by severity. Keep summaries secondary.
+If `mcporter list fuck-u-code` shows tools with non-offline status → **available**.
+State **`fuck-u-code preflight run (mcporter CLI)`** in the final review.
+Only write **`skipped (unavailable)`** when `mcporter list` or `mcporter call`
+fails (binary missing, server offline, timeout, schema mismatch).
 
-Execution guardrails:
+Review preflight safeguards:
 
-- Keep raw diff output out of the conversation context when possible. Prefer context-mode indexing/search for large diffs, and use three-dot diff against the target branch.
-- All review subagents must use Codex-backed Pi builtin subagents (`reviewer`, `worker`, `delegate`). Do not route review passes through Claude, Claude Code, Chorus, or any Claude-backed external agent unless the user explicitly requests the Claude provider.
-- If a subagent attempt fails because Claude quota is exhausted or Claude transport is unavailable, stop that route immediately. Retry once with a Codex-backed Pi builtin subagent. Do not retry Claude-backed paths.
-
-### Phase 6: Final freshness check
-
-**Right before writing the final review output**, re-read the PR metadata via MCP
-(`bb_get_pr` — without full diff, lightweight). Compare source commit hash:
-
-- Same → proceed.
-- Changed → **stop and report**: "PR commit changed during review — re-scoping required."
-
-### Review preflight safeguards
-
+- Before broad file reading, use context-mode to reduce the diff to changed
+  files/symbols and high-risk hunks. If CodeGraph MCP is available, run a
+  bounded impact pass for changed symbols that need surrounding context:
+  callers, usages, call chains, affected screens/hooks/navigation/API
+  boundaries, and hotspot/coupling candidates. Treat CodeGraph output only as
+  candidate discovery; every finding still needs current-turn primary evidence
+  from the diff, file contents, tests, logs, or context-mode search.
+- Do not use CodeGraph for Bitbucket/Jira/Confluence/internal connector reads;
+  those remain mcporter-first with schema inspection. Do not use CodeGraph for
+  large diff/log processing; those remain context-mode. Do not use CodeGraph as
+  durable memory; agentmemory remains curated and verified only.
+- If CodeGraph output is `_truncated`, stale, unresolved, or conflicts with file
+  evidence, do not cite it as review evidence. Narrow the query once or fall
+  back to context-mode plus file evidence.
 - RTK command rewrites can fail silently for simple read commands such as
   `rtk rewrite "sed ..."`. If that happens, do not stall the review. Use the
   repo-approved RTK form when the hook provides one, prefer `rtk grep` /
@@ -130,6 +266,49 @@ Execution guardrails:
 - For React or React Native PRs, include `npx react-doctor@latest` in
   verification. Run it from the repo root when package-manager and network
   access allow it. If it cannot run, report the exact command and blocker.
+- **MANDATORY: Check fuck-u-code availability BEFORE any preflight or
+  ensemble step.** Run **`mcporter list fuck-u-code`** (CLI only — see
+  **MCP transport — mcporter CLI only** above). Confirm the server appears
+  with a non-failure status (tool count + latency, not "offline" or "error").
+  Do NOT use `mcp_get_tools` for this gate. Do NOT skip this check. Do NOT
+  assume availability from memory, Cursor reload, or prior sessions.
+  - If available AND the PR has substantial logic changes (not just
+    locales/styles/tests/assets-only), run the bounded static analysis below
+    via **`mcporter call fuck-u-code.analyze`**.
+  - If NOT available (`mcporter` missing, `mcporter list` offline, `mcporter
+    call` fails): state "`fuck-u-code preflight skipped (unavailable — mcporter
+    CLI)`" and continue. Do NOT block the review.
+  - If `mcporter list` succeeds but you skip `mcporter call` without reason
+    (as in PR #2217 / #2182): **PROCESS VIOLATION**. The preflight line must
+    be either **`fuck-u-code preflight run (mcporter CLI)`** or **`skipped
+    (reason)`**. Silence is not permitted.
+  1. From the three-dot diff or PR metadata, extract the list of changed files.
+     Filter to `*.ts`, `*.tsx` only; exclude `**/*.test.*`, `**/__snapshots__/**`,
+     `**/locales/**`, `dist/`, `node_modules/`.
+  2. Determine the common parent path(s) of the changed files (typically 1-2).
+     Never scan the entire workspace — only the bounded paths. If changed
+     files span multiple disjoint paths, run the analysis for each path.
+  3. Invoke `analyze` through mcporter:
+     ```
+     mcporter call fuck-u-code.analyze \
+       path="<common-parent-path>" \
+       format=json top=15 verbose=false
+     ```
+  4. From the JSON output, extract `files[].score` and `files[].metrics[]`.
+     Keep only files that appear in both the PR diff AND the worst-scoring list.
+  5. Read the full content of those files (not just the diff) to understand
+     whether the PR is introducing new complexity/duplication or inheriting
+     existing legacy. Check: does the new code worsen the metrics?
+  6. If the PR inherits existing legacy (file was already bad before this PR),
+     note it as ⚪ Info — do not block. If the PR introduces new hotspots
+     (complexity/duplication without justification), report as 🟡 Minor.
+  7. Never promote fuck-u-code scores to primary findings without file-content
+     evidence. Never cite fuck-u-code score alone as 🟠 Major or higher.
+  8. On `mcporter call` failure (timeout, unavailable, schema mismatch), skip
+     preflight with "`fuck-u-code preflight skipped (mcporter CLI — <reason>)`"
+     and continue. Do not retry more than once.
+  9. The `ai-review` tool is excluded from the default pipeline — it sends
+     code to external APIs and duplicates the zereight ensemble.
 - When spawning review subagents, do not combine `fork_context=true` with an
   explicit `agent_type` if the runtime rejects that combination. Retry by
   spawning role-specific agents without `fork_context` and put the exact PR
@@ -141,26 +320,23 @@ Execution guardrails:
   ambiguous ref caused an unexpectedly large diff, discard that result and
   restart scoping from the full-ref three-dot diff.
 
-## Subagent escalation triggers
+Synthesis rules:
 
-Subagents are **escalation tools**, not mandatory passes. Only spawn a focused
-subagent when one or more of these conditions apply:
-
-- Major/Minor severity decision is ambiguous — need a second pair of eyes.
-- React, RN, Reanimated, or library behavior requires independent verification.
-- Payment, authentication, security, PII, or financial flow logic is involved.
-- Async race, fallback chain, or state transition complexity is high.
-- CodeGraph impact radius is broad across multiple modules or services.
-- Public API / type contract / data model is being changed.
-- Diff exceeds practical solo-review thresholds (e.g., >10 files or >500 lines).
-- User explicitly requests "thorough", "full review", or "철저히 봐줘".
-
-When spawning a subagent:
-
-- Assign one focused lens per subagent (e.g., "security only", "contract only").
-- Do not spawn every possible pass — spawn only what the current PR needs.
-- Include the PR metadata, source/target commit, repo path, and the specific review focus in the subagent prompt.
-- Subagents may use CodeGraph within their scope for efficient discovery.
+- Merge findings from all subagents into one final review (including
+  thermo-nuclear structural/maintainability findings).
+- Map thermo-nuclear **presumptive blockers** (1k-line explosion, spaghetti
+  special-case growth, missed code-judo simplification, boundary leaks) into
+  zereight severity when primary evidence confirms: structural regression with
+  user-facing risk → 🟠 Major; maintainability-only → 🟡 Minor or 🛠️ refactor;
+  decomposition opportunity with no behavior risk → 🔵 Trivial. Do not promote
+  thermo tone alone without file/line evidence.
+- De-duplicate overlapping findings and keep the strongest, most concrete file
+  and line reference.
+- If reviewers disagree, state the disagreement briefly and choose the outcome
+  supported by code evidence.
+- Preserve whole-diff coverage by listing changed files as `comment-worthy` or
+  `no comment`.
+- Lead with actionable findings ordered by severity. Keep summaries secondary.
 
 ## RED Team Mindset -- MANDATORY
 
@@ -259,94 +435,51 @@ Review every PR as if you are going to leave inline comments on the full diff, e
 
 ## Workflow -- always follow this sequence
 
-### Step 1: MCP-first PR read → freshness gate → worktree → CodeGraph → diff
+### PR Identity Gate — MANDATORY
+
+When the user provides a PR URL, the PR metadata is the source of truth.
+Before reading any diffs or starting the review:
+
+1. Fetch PR metadata first (prefer mcporter `bb_get_pr` with `includeFullDiff=true`):
+   - PR id, source branch, destination branch, source commit, destination commit, PR state
+2. Compare the current local HEAD/current branch with the PR source branch.
+   - If they **do not match**, do NOT review local HEAD. Explicitly state the mismatch.
+3. Review only the PR diff:
+   - Prefer Bitbucket/mcporter PR diff (`bb_get_pr` with `includeFullDiff=true`).
+   - If using git, use:
+     `refs/remotes/origin/<destination>...refs/remotes/origin/<source>`
+   - Never use `HEAD` unless PR metadata confirms HEAD is the PR source.
+4. If PR metadata cannot be fetched, stop and ask for clarification.
+   - Do not infer the PR from the current branch.
+
+### Step 1: Fetch and diff against origin/develop (THREE-DOT DIFF)
 
 **CRITICAL: Always use three-dot diff (`...`) not two-dot diff (`..`).**
+Two-dot diff includes changes from the target branch that were merged after the PR branch was created, producing false positives. Three-dot diff shows only changes introduced on the PR branch (merge-base diff) -- this matches what Bitbucket/GitHub PR pages display.
 
-#### 1a. MCP로 PR 정보 읽기 (Phase 1)
+### For Bitbucket repos with mcporter configured (preferred)
+When git commands are blocked (e.g., read-only review mode), fetch the diff
+via mcporter Bitbucket MCP first:
 
-```bash
-# PR metadata + diff
-mcporter call bitbucket.bb_get_pr \
-  workspaceSlug=<ws> repoSlug=<repo> \
-  prId=<PR_ID> includeFullDiff=true
+- PR metadata + diff: `mcporter call bitbucket.bb_get_pr workspaceSlug=<ws> repoSlug=<repo> prId=<PR_ID> includeFullDiff=true`
+- Comments: `mcporter call bitbucket.bb_ls_pr_comments workspaceSlug=<ws> repoSlug=<repo> prId=<PR_ID>`
+- Source files: `mcporter call bitbucket.bb_get_file workspaceSlug=<ws> repoSlug=<repo> filePath=<path>`
+- Fall back to git when mcporter is unavailable or fails.
 
-# Comments
-mcporter call bitbucket.bb_ls_pr_comments \
-  workspaceSlug=<ws> repoSlug=<repo> prId=<PR_ID>
-
-# Source files (as needed)
-mcporter call bitbucket.bb_get_file \
-  workspaceSlug=<ws> repoSlug=<repo> filePath=<path>
-```
-
-확보할 정보: PR ID, source/target branch, source commit hash, target commit hash, full diff, comments.
-
-MCP 실패 시 → **중단**. git으로 fallback하지 않음.
-
-#### 1b. Branch freshness gate (Phase 2)
+### For direct git access (fallback)
 
 ```bash
-git fetch origin <source-branch> <target-branch>
+git fetch origin
+git diff origin/develop...HEAD --stat
+git diff origin/develop...HEAD
 ```
 
-MCP source commit hash와 `refs/remotes/origin/<source-branch>` 비교:
+Reference script: `references/three-dot-diff.sh` (supports custom target branch and output modes).
 
-- 일치 → 진행
-- 불일치 → 다시 fetch 후 재확인. 여전히 다르면 **중단 보고**
-
-#### 1c. Review worktree 생성 (Phase 3)
-
-```bash
-git worktree add --detach \
-  .worktrees/review-pr-<PR_ID>-<SHORT_SHA> \
-  <source_commit>
-```
-
-- detached HEAD로 생성하여 PR branch 실수 수정 방지
-- `.worktrees/` ignored 확인
-
-#### 1d. CodeGraph 초기화 및 스코핑 (Phase 4)
-
-worktree 디렉토리에서 실행:
-
-```bash
-# 상태 확인 및 초기화
-codegraph status 2>/dev/null || codegraph init -i
-codegraph sync
-
-# 영향받는 테스트 파일 탐색
-git diff --name-only refs/remotes/origin/<target>...HEAD \
-  | codegraph affected --stdin --quiet
-
-# 관련 코드 컨텍스트 (broad impact 예상 시만)
-codegraph context "Review PR <PR_ID>: <changed files summary>" \
-  --format markdown --max-nodes 20
-```
-
-#### 1e. Diff 확보 및 교차 검증
-
-MCP diff를 기준으로 사용. git three-dot diff로 검증:
-
-```bash
-git diff refs/remotes/origin/<target>...HEAD --stat
-git diff refs/remotes/origin/<target>...HEAD
-```
-
-- MCP diff와 git diff의 changed file 목록이 일치하는지 확인
-- 불일치 시 MCP diff 우선
-
-#### 1f. Scoping 결과 정리
-
-CodeGraph 및 diff 분석 결과를 요약:
-
-- 주요 symbol changes
-- 영향받는 caller/callee
-- Affected test candidates
-- 추가로 읽어야 할 파일 후보
-
-Full diff와 CodeGraph output을 main context에 통째로 붙이지 않음.
-요약만 유지하고 필요한 파일만 선택적으로 read.
+- Use `--stat` first to get the full list of changed files.
+- Then read the full diff to understand every change.
+- If the branch is behind origin/develop, note it but still proceed with the diff.
+- If the diff looks unexpectedly large, verify you are using `...` (three dots) not `..` (two dots).
 
 ### Step 2: Understand codebase context
 
@@ -448,6 +581,37 @@ Use this skill when:
    - Fix: Hoist the cheap check before the expensive operation.
    - Example: `GetChallenge()` called before `generateAttestation()` which checks `isSupported` internally → wasteful API call on unsupported devices.
 
+10. **Refactor-only layout responsibility checks**
+    - When a PR claims "only code location changes" or extracts a base component, build a before/after **style ownership map** before concluding equivalence. Map every style property to its owner in both versions.
+      - interactive wrapper: Pressable / AnimatedPressable / Touchable
+      - content layout row
+      - child text/icon/image layout
+      - feedback/ripple/overlay boundary
+      - reusable base component boundary
+    - Check these specific risks:
+
+      **Style owner changed**
+      - `flexDirection`, `gap`, `alignItems`, `padding`, `flex`, `alignSelf`, `justifyContent`
+      - Moving a style from pressable container to inner view can silently change hit area, feedback area, measurement (flex-basis), or parent layout behavior.
+      - Example: `paddingHorizontal` on `containerStyle` of `AppAnimatedPressable` vs inner `AppView` — padding moves out of the pressable feedback boundary.
+
+      **Conditional style names hide behavior**
+      - Names like `whenLogoStyle` must describe the actual effect, not the triggering condition.
+      - If the style value is `alignItems: 'center'`, review it as row alignment, not "logo styling".
+      - Flag names that make a layout invariant look like a visual detail.
+
+      **Extracted base component leaks parent assumptions**
+      - `flex: 1`, `alignSelf: 'stretch'`, absolute sizing, or margins inside a reusable base component are red flags.
+      - Base components should expose layout props (via `style`) or keep parent-owned layout in the wrapper.
+      - If `flex: 1` is added only for width fill, verify it won't cause height expansion when reused inside a column parent with bounded height.
+
+      **Intent, not just same values**
+      - If `MY_BANK` and logo-based accounts intentionally align differently, the reason should be obvious from naming or comments.
+      - If not, ask for clarification or suggest explicit named styles.
+    - Review output guidance:
+      - If behavior likely still works but intent/reuse risk is unclear, report as 🔵 Trivial or 🟡 Minor.
+      - Do not say "layout equivalent" until style ownership and reusable-boundary effects are verified.
+
 ## Architecture review checks (run when PR adds hooks, services, or screens)
 
 When a PR introduces new modules, hooks, services, or screens (or significantly restructures existing ones), evaluate architecture quality. Skip for trivial single-file changes.
@@ -532,6 +696,17 @@ Security severity guide:
 - 🟠 Major: PII in plain local storage, missing input validation on financial amounts, sensitive data in logs
 - 🟡 Minor: debug logging with non-critical data, client-side validation gaps backed by server validation
 
+## Thermo-nuclear maintainability checks (always run via ensemble pass)
+
+Load and apply `thermo-nuclear-code-quality-review` in the dedicated subagent
+pass (or single-pass fallback). This is **stricter than** default clean-code
+nits: hunt for code-judo simplifications, unjustified 1k+ line files, spaghetti
+branching, leaky abstractions, and cast-heavy boundaries.
+
+Coordinator must surface thermo findings in the final review when confirmed by
+diff/file evidence. Skip duplicating thermo phrasing if the same structural
+issue was already reported — keep the strongest reference.
+
 ## Clean code checks (run after security checks)
 
 After security checks, scan for clean code issues. See `references/clean-code.md` for full detail.
@@ -600,6 +775,21 @@ Use this output order:
 3. `리뷰 코멘트`
 4. `파일별 리뷰 결과`
 5. `검증 결과`
+
+In `검증 결과`, include:
+
+- **thermo-nuclear** row: `thermo-nuclear pass completed` / `thermo-nuclear pass skipped (subagent blocked)` / `thermo-nuclear covered in single-pass fallback`
+- **fuck-u-code** row using mcporter CLI status only:
+
+| Result | Wording |
+| --- | --- |
+| Ran | `fuck-u-code preflight run (mcporter CLI)` + bounded path(s) |
+| Skipped — no logic | `fuck-u-code skipped (assets/locales/tests only)` |
+| Skipped — unavailable | `fuck-u-code preflight skipped (unavailable — mcporter CLI)` + reason |
+
+Never report `skipped (unavailable)` because Cursor `mcp_get_tools` lacked the
+server. If `mcporter list fuck-u-code` is healthy, you must run or explicitly
+skip with a PR-scoped reason (e.g. assets-only).
 
 For each finding, use these sections:
 - 위치

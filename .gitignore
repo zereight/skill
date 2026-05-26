@@ -1,3 +1,13 @@
 .omc/
 .codegraph/
 docs/
+
+# autocontext runtime artifacts
+runs/
+knowledge/
+*.sqlite3
+runs/events.ndjson
+
+# Pi local npm install (api workspace)
+api/.pi/npm/node_modules/
+api/.pi/memory/
