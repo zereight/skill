@@ -1,0 +1,7 @@
+{
+  "default_scenario": "agent_task",
+  "provider": "pi",
+  "gens": 2,
+  "knowledge_dir": "./knowledge",
+  "runs_dir": "./runs"
+}
