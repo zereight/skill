@@ -2,10 +2,75 @@
 
 Personal agent skills for code review and React Native development.
 
+## Repo layout (SSOT)
+
+| Path | Role |
+|------|------|
+| [`.agents/skills/`](.agents/skills/) | **Single source of truth** — add or edit skills here only |
+| [`.cursor/skills/`](.cursor/skills/) | Cursor view — symlinks to `../../.agents/skills/<name>` |
+| [`.pi/agent/skills/`](.pi/agent/skills/) | Pi view — symlinks to `../../../.agents/skills/<name>` |
+
+After adding a skill under `.agents/skills/`, run:
+
+```bash
+bash scripts/ensure-repo-skills.sh
+```
+
+This syncs repo views, links `~/.agents/skills` → repo SSOT, patches Pi `settings.json` if needed, and runs `npm run verify:pi-skills`. Restart Pi when it prints `verify OK`.
+
+Check only (no sync): `npm run verify:pi-skills`.
+
+### Pi skill collision warnings (repo-owned skills)
+
+If Pi reports collisions for `roborev-guide`, `zereight-review`, or `autocontext`:
+
+1. **SSOT wins** — keep editing only `.agents/skills/<name>/`.
+2. **Disable npm duplicate** — `.pi/settings.json` (and `api/.pi/settings.json` when cwd is `api/`) sets `npm:pi-autocontext` → `"skills": []` (extension tools still load).
+3. **Global + Pi registration** — `ensure-repo-skills.sh` links `~/.agents/skills` and ensures Pi `settings.json` lists that path.
+
+Restart Pi after changing settings or symlinks.
+
+## Peter P. skills ([peterpme/skills](https://github.com/peterpme/skills))
+
+Vendored under `.agents/skills/`:
+
+| Skill | Description |
+|-------|-------------|
+| `engineering-manager` | Coordinate multi-agent engineering work, validation gates, PRs, final audit |
+| `continuity` | Learn, record, audit, and apply codebase patterns (`learn` / `check` / `fix` / `ci`) |
+| `morning-recap` | Summarize merged GitHub PRs you have not touched; rank review priority |
+| `study-repo` | Clone a GitHub repo and run an interactive codebase study session |
+| `skill-cleaner` | Audit skill token cost, duplicates, outdated plugin cache, unused skills ([claude-skill-cleaner](https://github.com/YuzuruS/claude-skill-cleaner)) |
+| `skill-not-showing` | Diagnose missing Pi `/skill` or Cursor list entries (settings vs symlinks vs extension skills) |
+
+## autocontext (installed)
+
+| Component | Status |
+|-----------|--------|
+| Pi package | `npm:pi-autocontext@0.2.5` in `~/.pi/agent/settings.json` |
+| CLI | `autoctx` via `uv tool install autocontext==0.5.0` |
+| Project config | `.autoctx.json` (`provider: pi`, `gens: 2`) |
+
+```bash
+# Pi (restart Pi after first install)
+pi install npm:pi-autocontext
+
+# CLI
+uv tool install autocontext==0.5.0
+cd /path/to/this/repo
+source autocontext.env.example   # or export vars manually
+autoctx list
+# npm autoctx (bundled with pi-autocontext): ~/.pi/agent/npm/node_modules/.bin/autoctx capabilities
+```
+
+In Pi: use tools `autocontext_judge` / `autocontext_improve` or `/skill:autocontext`. See `.agents/skills/autocontext/SKILL.md` for routing vs `continuity` and `zereight-review`.
+
 ## Skills
 
 | Skill | Description |
 |-------|-------------|
+| `harness` | Pi-native evaluate→improve→persist loop (solve, knowledge, status) |
+| `autocontext` | Judge/improve loops, scenarios, playbooks (Pi + `autoctx` CLI) |
 | `zereight-review` | Core review — logic correctness, edge cases, clean code, React Effect anti-patterns |
 | `zereight-react-native-optimizer` | RN performance review — rendering, animation, native/bridge checks |
 | `zereight-react-native-testing` | RNTL v13/v14 test writing — queries, matchers, userEvent, async patterns |

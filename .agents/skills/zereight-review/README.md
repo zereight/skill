@@ -28,7 +28,6 @@ npx skills add zereight/skill --yes --global
 | Boundary | `0`, negative, `undefined`, empty string, overflow |
 | Async / race | Stale closure, open/close/reset/submit ordering, loading flag recovery |
 | Clean code | Naming, component design, React Effect anti-patterns, RN StyleSheet, React Doctor |
-| Thermo-nuclear maintainability | Ensemble pass via `thermo-nuclear-code-quality-review` — code judo, 1k-line boundary, spaghetti branching, abstraction quality |
 | React Effects | Derived state, event logic in Effect, Effect chains, fetch without cleanup |
 | React Doctor | For React/RN PRs, run `npx react-doctor@latest` when tooling/network allow it |
 
