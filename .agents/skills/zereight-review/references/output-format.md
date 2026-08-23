@@ -1,5 +1,11 @@
 # Output Format
 
+## Delivery (SSOT)
+
+- **Default:** Write the review in the **current session** (chat). Do **not** post to Bitbucket, GitHub, or GitLab unless the user explicitly asks (e.g. `댓글 달아`, `PR에 코멘트 올려`, `post the review`).
+- `리뷰해줘` / `zereight-review` alone = report only, no host posting.
+- Full format below is the **deliverable text**, not an instruction to auto-post it.
+
 ## Structure
 
 Every review must follow this order. Do not skip sections.

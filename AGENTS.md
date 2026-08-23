@@ -2,6 +2,12 @@
 
 Personal agent skills for code review and React Native development. See [README.md](./README.md) for layout, install, and skill inventory.
 
+## Context-mode + AgentMemory (always on)
+
+- **context-mode:** `.cursor/rules/context-mode.mdc` — use `ctx_*` MCP tools for large output, diffs, logs, web fetch (think-in-code).
+- **AgentMemory:** Pi extension at `~/.pi/agent/extensions/agent-memory/` — `memory_search` at session start; `memory_add` for durable preferences/decisions (no secrets).
+- Project memories: `.pi/memory/memories.jsonl` (auto-created).
+
 ## After adding a repo skill
 
 1. Edit only [`.agents/skills/<name>/`](.agents/skills/).
