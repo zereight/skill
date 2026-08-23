@@ -36,9 +36,12 @@ Issues that reduce maintainability or clarity, but don't affect runtime behavior
 
 - If a Medium issue requires a contrived or near-impossible input combination → downgrade to Low
 - If a High issue is already protected by a layer above (validated at API boundary, etc.) → downgrade to Medium
+- If the bad path needs an **unconfirmed API contract** (e.g. assumed partial-fail shape on a mock→API PR) → downgrade to Info / Ask until spec, GIF, or API PR confirms the path
+- If the diff is an intentional **axis B** source-of-truth change (client heuristic → server field) and only “differs from develop” → do not report as Medium/High regression; Ask or note as intentional
 
 ## Do not report
 
 - Pure style opinions with no behavioral or clarity impact
 - Suggestions to adopt a different architecture when the current one works correctly
 - Issues already flagged by linting/type checking that the author is clearly aware of
+- “Regression vs develop” on axis-B PRs when the PR deliberately replaces mock/client logic with API fields (unless the new code contradicts the stated API contract)

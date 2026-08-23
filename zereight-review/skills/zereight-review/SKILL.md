@@ -176,6 +176,9 @@ Rules:
 7. Do not block the final review waiting for a subagent or verification
    to complete. Synthesize from what is already available, mark any gaps,
    and deliver.
+8. **Exception:** **PR Identity Gate** hard stop overrides rules 1–7. When
+   both mcporter and local API fail to fetch Bitbucket PR metadata, stop the
+   entire review — do not synthesize findings from local git or subagents.
 
 If subagent spawning IS available, use it — do NOT default to single-pass.
 - Keep raw diff output out of the conversation context when possible. Prefer
@@ -437,20 +440,43 @@ Review every PR as if you are going to leave inline comments on the full diff, e
 
 ### PR Identity Gate — MANDATORY
 
-When the user provides a PR URL, the PR metadata is the source of truth.
-Before reading any diffs or starting the review:
+When the user provides a **Bitbucket PR URL**, PR metadata is the source of truth.
+**Do not** spawn review subagents, run fuck-u-code preflight, or start file-level
+findings until metadata fetch succeeds.
 
-1. Fetch PR metadata first (prefer mcporter `bb_get_pr` with `includeFullDiff=true`):
-   - PR id, source branch, destination branch, source commit, destination commit, PR state
-2. Compare the current local HEAD/current branch with the PR source branch.
-   - If they **do not match**, do NOT review local HEAD. Explicitly state the mismatch.
-3. Review only the PR diff:
-   - Prefer Bitbucket/mcporter PR diff (`bb_get_pr` with `includeFullDiff=true`).
-   - If using git, use:
-     `refs/remotes/origin/<destination>...refs/remotes/origin/<source>`
-   - Never use `HEAD` unless PR metadata confirms HEAD is the PR source.
-4. If PR metadata cannot be fetched, stop and ask for clarification.
-   - Do not infer the PR from the current branch.
+**Metadata fetch order (try both before giving up):**
+
+1. **Primary — mcporter Bitbucket MCP** (CLI only; see **MCP transport**):
+   `mcporter call bitbucket.bb_get_pr workspaceSlug=<ws> repoSlug=<repo> prId=<PR_ID> includeFullDiff=true`
+   Extract: PR id, source/destination branch, source/destination commit, PR state,
+   and full diff when included.
+2. **Secondary — local Bitbucket REST API** (only if step 1 fails):
+   `node skills/bitbucket-api-env/scripts/bitbucket-api.mjs pr <PR_ID>` (from this repo root)
+   (use `diff` / `diffstat` / `comments` as needed). Requires `BITBUCKET_WORKSPACE`,
+   `BITBUCKET_REPO_SLUG`, and auth env (`BITBUCKET_ACCESS_TOKEN` or
+   `BITBUCKET_USERNAME` + `BITBUCKET_API_TOKEN`). Report exact HTTP status and body
+   excerpt on failure.
+
+**Hard stop — metadata unavailable**
+
+If **both** mcporter and local API fail to return usable PR metadata (branches,
+commits, PR state):
+
+- **Stop the review immediately.** No ensemble, no preflight, no “best effort”
+  pass over local files.
+- Reply with a short **blocker** only: which path failed, error excerpts, missing
+  env vars if any.
+- Do **not** fall back to `git diff …HEAD`, current branch, or inferred PR scope.
+- Ask the user to fix mcporter/auth/env or supply explicit branch names + diff.
+
+**After metadata succeeds:**
+
+3. Compare local HEAD/current branch with the PR source branch. If they **do not
+   match**, do NOT review local HEAD — state the mismatch.
+4. Review only the PR diff from metadata (`bb_get_pr` / API `diff`), or git
+   three-dot using metadata branches:
+   `refs/remotes/origin/<destination>...refs/remotes/origin/<source>`
+5. Never use `HEAD` unless PR metadata confirms HEAD is the PR source.
 
 ### Step 1: Fetch and diff against origin/develop (THREE-DOT DIFF)
 
@@ -458,15 +484,18 @@ Before reading any diffs or starting the review:
 Two-dot diff includes changes from the target branch that were merged after the PR branch was created, producing false positives. Three-dot diff shows only changes introduced on the PR branch (merge-base diff) -- this matches what Bitbucket/GitHub PR pages display.
 
 ### For Bitbucket repos with mcporter configured (preferred)
-When git commands are blocked (e.g., read-only review mode), fetch the diff
-via mcporter Bitbucket MCP first:
+When git commands are blocked (e.g., read-only review mode), fetch via mcporter
+after **PR Identity Gate** succeeds:
 
 - PR metadata + diff: `mcporter call bitbucket.bb_get_pr workspaceSlug=<ws> repoSlug=<repo> prId=<PR_ID> includeFullDiff=true`
 - Comments: `mcporter call bitbucket.bb_ls_pr_comments workspaceSlug=<ws> repoSlug=<repo> prId=<PR_ID>`
 - Source files: `mcporter call bitbucket.bb_get_file workspaceSlug=<ws> repoSlug=<repo> filePath=<path>`
-- Fall back to git when mcporter is unavailable or fails.
+- If the user gave a PR URL and metadata gate failed, **do not** fall back to git here — stop per **Hard stop**.
 
 ### For direct git access (fallback)
+
+Use only when the user did **not** supply a Bitbucket PR URL, or explicitly
+requests git-only review without Bitbucket metadata.
 
 ```bash
 git fetch origin

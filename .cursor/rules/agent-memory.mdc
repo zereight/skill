@@ -1,0 +1,31 @@
+---
+description: AgentMemory cross-session recall — always search before acting, save durable decisions
+alwaysApply: true
+---
+
+# AgentMemory
+
+Use Pi AgentMemory tools for preferences and decisions that must survive across sessions.
+
+## Session start (MANDATORY)
+
+1. Call `memory_search` with the user's topic, project name, and key nouns from the request.
+2. If the user references "before", "last time", or prior work — search memory **before** asking them to repeat context.
+
+## When to save
+
+- User says "remember this" or states a durable preference.
+- You make a project decision (architecture, workflow, naming) the user approved.
+- You learn a stable constraint (lint rule, deploy gate, branch policy).
+
+Use `memory_add` with tags: project name, topic, type (`preference`, `decision`, `constraint`).
+
+## Never store
+
+API keys, tokens, passwords, `.env` contents, or other secrets. The extension blocks these; do not retry with redacted guesses.
+
+## With context-mode
+
+- **AgentMemory** = cross-session keyword memories (JSONL).
+- **context-mode `ctx_search`** = this project's indexed session/knowledge base.
+- Use both at session start when resuming or when scope is unclear.

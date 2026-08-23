@@ -1,0 +1,185 @@
+{
+  "version": 1,
+  "name": "skill",
+  "color": "",
+  "dockState": {
+    "zones": {
+      "left": {
+        "position": "left",
+        "visible": false,
+        "size": 260,
+        "layout": null
+      },
+      "right": {
+        "position": "right",
+        "visible": false,
+        "size": 260,
+        "layout": null
+      },
+      "bottom": {
+        "position": "bottom",
+        "visible": false,
+        "size": 240,
+        "layout": null
+      },
+      "center": {
+        "position": "center",
+        "visible": true,
+        "size": 0,
+        "layout": {
+          "type": "tabs",
+          "id": "ee7fbd65-6f90-4783-874d-4bf7b614e65b",
+          "panelIds": [
+            "2e7557d2-9b45-409b-916b-0e292d65e0df",
+            "22a3d0ac-9a0a-4f57-a1dd-d839b87a986c"
+          ],
+          "activeIndex": 0
+        }
+      }
+    },
+    "locations": {
+      "2e7557d2-9b45-409b-916b-0e292d65e0df": {
+        "type": "dock",
+        "zone": "center",
+        "stackId": "ee7fbd65-6f90-4783-874d-4bf7b614e65b"
+      },
+      "22a3d0ac-9a0a-4f57-a1dd-d839b87a986c": {
+        "type": "dock",
+        "zone": "center",
+        "stackId": "ee7fbd65-6f90-4783-874d-4bf7b614e65b"
+      }
+    }
+  },
+  "panels": {
+    "25f460d0-25b7-4d22-9da1-cc1d7a71e1c0": {
+      "type": "terminal",
+      "title": "Terminal 1"
+    },
+    "c1c37c6a-a343-4db7-9833-be82736bf966": {
+      "type": "browser",
+      "title": "쇼핑블록",
+      "url": "https://shopsquare.naver.com/newbrandshop"
+    },
+    "c8d84fbd-2f35-4845-bf81-5207ad753f02": {
+      "type": "terminal",
+      "title": "Terminal 2"
+    },
+    "88128706-a73a-4aee-9647-01eb65d43982": {
+      "type": "agent",
+      "title": "Agent 1"
+    },
+    "2e7557d2-9b45-409b-916b-0e292d65e0df": {
+      "type": "canvas",
+      "title": "Canvas"
+    },
+    "22a3d0ac-9a0a-4f57-a1dd-d839b87a986c": {
+      "type": "editor",
+      "title": "AGENTS.md",
+      "filePath": "AGENTS.md"
+    }
+  },
+  "canvases": {
+    "2e7557d2-9b45-409b-916b-0e292d65e0df": {
+      "id": "2e7557d2-9b45-409b-916b-0e292d65e0df",
+      "canvasNodes": {
+        "a14682f1-bac4-4b4d-8cd8-b4cded72241a": {
+          "id": "a14682f1-bac4-4b4d-8cd8-b4cded72241a",
+          "panelId": "25f460d0-25b7-4d22-9da1-cc1d7a71e1c0",
+          "origin": {
+            "x": 130,
+            "y": 168
+          },
+          "size": {
+            "width": 640,
+            "height": 400
+          },
+          "zOrder": 21,
+          "creationIndex": 0,
+          "animationState": "idle",
+          "dockLayout": {
+            "type": "tabs",
+            "id": "c4f98c47-1229-41ed-9fd5-3532701a53f1",
+            "panelIds": [
+              "25f460d0-25b7-4d22-9da1-cc1d7a71e1c0"
+            ],
+            "activeIndex": 0
+          }
+        },
+        "9d1f5933-f81d-43cf-8030-0707aae6c6ff": {
+          "id": "9d1f5933-f81d-43cf-8030-0707aae6c6ff",
+          "panelId": "c1c37c6a-a343-4db7-9833-be82736bf966",
+          "origin": {
+            "x": -924.9441483570704,
+            "y": 45.107068345278726
+          },
+          "size": {
+            "width": 800,
+            "height": 420
+          },
+          "zOrder": 19,
+          "creationIndex": 1,
+          "animationState": "idle",
+          "dockLayout": {
+            "type": "tabs",
+            "id": "e5c13806-a1b6-4586-b613-f43da08df10a",
+            "panelIds": [
+              "c1c37c6a-a343-4db7-9833-be82736bf966"
+            ],
+            "activeIndex": 0
+          }
+        },
+        "e14d25ba-90a2-4193-83c6-76fa281c9d38": {
+          "id": "e14d25ba-90a2-4193-83c6-76fa281c9d38",
+          "panelId": "c8d84fbd-2f35-4845-bf81-5207ad753f02",
+          "origin": {
+            "x": -565.4524142884086,
+            "y": 548.0721928134732
+          },
+          "size": {
+            "width": 460,
+            "height": 200
+          },
+          "zOrder": 20,
+          "creationIndex": 2,
+          "animationState": "idle",
+          "dockLayout": {
+            "type": "tabs",
+            "id": "566bfdc1-e43e-4b1c-a7cc-33fca80f21ed",
+            "panelIds": [
+              "c8d84fbd-2f35-4845-bf81-5207ad753f02"
+            ],
+            "activeIndex": 0
+          }
+        },
+        "c650b54e-bd71-46c7-8d6e-4ac93965d3cb": {
+          "id": "c650b54e-bd71-46c7-8d6e-4ac93965d3cb",
+          "panelId": "88128706-a73a-4aee-9647-01eb65d43982",
+          "origin": {
+            "x": -10.657657980479428,
+            "y": 999.8033023886414
+          },
+          "size": {
+            "width": 760,
+            "height": 480
+          },
+          "zOrder": 16,
+          "creationIndex": 3,
+          "animationState": "idle",
+          "dockLayout": {
+            "type": "tabs",
+            "id": "f9c81229-0e9d-4c8e-af7c-60bba40a1eba",
+            "panelIds": [
+              "88128706-a73a-4aee-9647-01eb65d43982"
+            ],
+            "activeIndex": 0
+          }
+        }
+      },
+      "zoomLevel": 0.4485127764940257,
+      "viewportOffset": {
+        "x": 322.512766993827,
+        "y": -168.03042041919522
+      }
+    }
+  }
+}

@@ -5,11 +5,17 @@ set -euo pipefail
 AGENTS="${AGENTS_SKILLS_DIR:-$HOME/.agents/skills}"
 CURSOR="${CURSOR_SKILLS_DIR:-$HOME/.cursor/skills}"
 PI="${PI_SKILLS_DIR:-$HOME/.pi/agent/skills}"
+CLAUDE="${CLAUDE_SKILLS_DIR:-$HOME/.claude/skills}"
+CODEX="${CODEX_SKILLS_DIR:-$HOME/.codex/skills}"
 CURSOR_REL="../../.agents/skills"
 PI_REL="../../../.agents/skills"
+CLAUDE_REL="../../.agents/skills"
+CODEX_REL="../../.agents/skills"
 
 SYNC_CURSOR=1
 SYNC_PI=1
+SYNC_CLAUDE=1
+SYNC_CODEX=1
 INGEST_PI=0
 INGEST_CURSOR_TEAM_KIT=0
 UPDATE_CURSOR_TEAM_KIT=0
@@ -26,6 +32,8 @@ Options:
   --update-cursor-team-kit     With ingest flags: overwrite agents copy from plugin source
   --cursor-only                Sync only ~/.cursor/skills
   --pi-only                    Sync only ~/.pi/agent/skills
+  --claude-only                Sync only ~/.claude/skills
+  --codex-only                 Sync only ~/.codex/skills
   -h, --help                   Show this help
 EOF
 }
@@ -35,8 +43,10 @@ while [[ $# -gt 0 ]]; do
     --ingest-pi) INGEST_PI=1 ;;
     --ingest-cursor-team-kit) INGEST_CURSOR_TEAM_KIT=1 ;;
     --update-cursor-team-kit) UPDATE_CURSOR_TEAM_KIT=1 ;;
-    --cursor-only) SYNC_PI=0 ;;
-    --pi-only) SYNC_CURSOR=0 ;;
+    --cursor-only) SYNC_PI=0; SYNC_CLAUDE=0; SYNC_CODEX=0 ;;
+    --pi-only) SYNC_CURSOR=0; SYNC_CLAUDE=0; SYNC_CODEX=0 ;;
+    --claude-only) SYNC_CURSOR=0; SYNC_PI=0; SYNC_CODEX=0 ;;
+    --codex-only) SYNC_CURSOR=0; SYNC_PI=0; SYNC_CLAUDE=0 ;;
     -h | --help)
       usage
       exit 0
@@ -269,6 +279,8 @@ home = Path.home()
 agents = skills(home / ".agents/skills")
 cursor = skills(home / ".cursor/skills")
 pi = skills(home / ".pi/agent/skills")
+claude = skills(home / ".claude/skills")
+codex = skills(home / ".codex/skills")
 
 def check_view(name: str, root: Path, rel: str) -> tuple[int, int]:
     bad_link = 0
@@ -285,35 +297,53 @@ def check_view(name: str, root: Path, rel: str) -> tuple[int, int]:
 
 cb, cr = check_view("cursor", home / ".cursor/skills", "../../.agents/skills")
 pb, pr = check_view("pi", home / ".pi/agent/skills", "../../../.agents/skills")
+clb, clr = check_view("claude", home / ".claude/skills", "../../.agents/skills")
+cob, cor = check_view("codex", home / ".codex/skills", "../../.agents/skills")
 
 broken = []
-for label, root in [("agents", home / ".agents/skills"), ("cursor", home / ".cursor/skills"), ("pi", home / ".pi/agent/skills")]:
+for label, root in [
+    ("agents", home / ".agents/skills"),
+    ("cursor", home / ".cursor/skills"),
+    ("pi", home / ".pi/agent/skills"),
+    ("claude", home / ".claude/skills"),
+    ("codex", home / ".codex/skills"),
+]:
     for p in root.iterdir():
         if p.is_symlink() and not p.exists():
             broken.append(f"{label}:{p.name}")
 
-print(f"agents={len(agents)} cursor={len(cursor)} pi={len(pi)}")
+print(f"agents={len(agents)} cursor={len(cursor)} pi={len(pi)} claude={len(claude)} codex={len(codex)}")
 print(f"agents==cursor: {agents == cursor}")
 print(f"agents==pi: {agents == pi}")
+print(f"agents==claude: {agents == claude}")
+print(f"agents==codex: {agents == codex}")
 print(f"cursor wrong/missing symlinks: {cb} not_symlink={cr}")
 print(f"pi wrong/missing symlinks: {pb} not_symlink={pr}")
+print(f"claude wrong/missing symlinks: {clb} not_symlink={clr}")
+print(f"codex wrong/missing symlinks: {cob} not_symlink={cor}")
 print(f"broken symlinks: {len(broken)}")
 if broken:
     for b in broken[:20]:
         print(f"  {b}")
     raise SystemExit(1)
-if agents != cursor or agents != pi:
-    only_a = sorted(agents - cursor - pi)[:10]
+if agents != cursor or agents != pi or agents != claude or agents != codex:
+    only_a = sorted(agents - cursor - pi - claude - codex)[:10]
     only_c = sorted(cursor - agents)[:10]
     only_p = sorted(pi - agents)[:10]
+    only_cl = sorted(claude - agents)[:10]
+    only_co = sorted(codex - agents)[:10]
     if only_a:
         print("only agents sample:", only_a)
     if only_c:
         print("only cursor sample:", only_c)
     if only_p:
         print("only pi sample:", only_p)
+    if only_cl:
+        print("only claude sample:", only_cl)
+    if only_co:
+        print("only codex sample:", only_co)
     raise SystemExit(1)
-if cb or cr or pb or pr:
+if cb or cr or pb or pr or clb or clr or cob or cor:
     raise SystemExit(1)
 print("verify OK")
 PY
@@ -339,6 +369,14 @@ main() {
 
   if [[ "$SYNC_PI" -eq 1 ]]; then
     sync_view "$PI" "$PI_REL" "pi"
+  fi
+
+  if [[ "$SYNC_CLAUDE" -eq 1 ]]; then
+    sync_view "$CLAUDE" "$CLAUDE_REL" "claude"
+  fi
+
+  if [[ "$SYNC_CODEX" -eq 1 ]]; then
+    sync_view "$CODEX" "$CODEX_REL" "codex"
   fi
 
   verify_sets
