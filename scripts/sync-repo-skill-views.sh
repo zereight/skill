@@ -8,22 +8,31 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 AGENTS="${AGENTS_SKILLS_DIR:-$REPO_ROOT/.agents/skills}"
 CURSOR="${CURSOR_SKILLS_DIR:-$REPO_ROOT/.cursor/skills}"
 PI="${PI_SKILLS_DIR:-$REPO_ROOT/.pi/agent/skills}"
+CLAUDE="${CLAUDE_SKILLS_DIR:-$REPO_ROOT/.claude/skills}"
+CODEX="${CODEX_SKILLS_DIR:-$REPO_ROOT/.codex/skills}"
 CURSOR_REL="../../.agents/skills"
 PI_REL="../../../.agents/skills"
+CLAUDE_REL="../../.agents/skills"
+CODEX_REL="../../.agents/skills"
 
 SYNC_CURSOR=1
 SYNC_PI=1
+SYNC_CLAUDE=1
+SYNC_CODEX=1
 RUN_VERIFY=1
 
 usage() {
   cat <<'EOF'
 Usage: sync-repo-skill-views.sh [options]
 
-  SSOT is <repo>/.agents/skills. Mirrors skill names into .cursor/skills and .pi/agent/skills.
+  SSOT is <repo>/.agents/skills. Mirrors skill names into .cursor/skills, .pi/agent/skills,
+  .claude/skills, and .codex/skills.
 
 Options:
   --cursor-only   Sync only .cursor/skills
   --pi-only       Sync only .pi/agent/skills
+  --claude-only   Sync only .claude/skills
+  --codex-only    Sync only .codex/skills
   --no-verify     Skip verify-pi-skills-registration (used by ensure-repo-skills.sh)
   -h, --help      Show this help
 
@@ -33,8 +42,10 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --cursor-only) SYNC_PI=0 ;;
-    --pi-only) SYNC_CURSOR=0 ;;
+    --cursor-only) SYNC_PI=0; SYNC_CLAUDE=0; SYNC_CODEX=0 ;;
+    --pi-only) SYNC_CURSOR=0; SYNC_CLAUDE=0; SYNC_CODEX=0 ;;
+    --claude-only) SYNC_CURSOR=0; SYNC_PI=0; SYNC_CODEX=0 ;;
+    --codex-only) SYNC_CURSOR=0; SYNC_PI=0; SYNC_CLAUDE=0 ;;
     --no-verify) RUN_VERIFY=0 ;;
     -h | --help)
       usage
@@ -117,9 +128,17 @@ main() {
     sync_view "$PI" "$PI_REL" "pi"
   fi
 
+  if [[ "$SYNC_CLAUDE" -eq 1 ]]; then
+    sync_view "$CLAUDE" "$CLAUDE_REL" "claude"
+  fi
+
+  if [[ "$SYNC_CODEX" -eq 1 ]]; then
+    sync_view "$CODEX" "$CODEX_REL" "codex"
+  fi
+
   echo "== verify =="
   local broken=0
-  for view in "$CURSOR" "$PI"; do
+  for view in "$CURSOR" "$PI" "$CLAUDE" "$CODEX"; do
     for p in "$view"/*; do
       [[ -e "$p" ]] || [[ -L "$p" ]] || continue
       if [[ -L "$p" ]] && [[ ! -e "$p" ]]; then

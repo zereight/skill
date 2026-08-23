@@ -1,0 +1,271 @@
+diff --git a/apps/server/src/provider/Layers/CursorProvider.ts b/apps/server/src/provider/Layers/CursorProvider.ts
+index 88a963f..fe42f9c 100644
+--- a/apps/server/src/provider/Layers/CursorProvider.ts
++++ b/apps/server/src/provider/Layers/CursorProvider.ts
+@@ -42,6 +42,10 @@ import {
+   type ProviderMaintenanceCapabilities,
+ } from "../providerMaintenance.ts";
+ import { AcpSessionRuntime } from "../acp/AcpSessionRuntime.ts";
++import {
++  discoverLocalAgentSkills,
++  toSlashCommandsFromSkills,
++} from "../discoverLocalAgentSkills.ts";
+ 
+ const PROVIDER = ProviderDriverKind.make("cursor");
+ const CURSOR_PRESENTATION = {
+@@ -738,6 +742,8 @@ export function buildCursorProviderSnapshot(input: {
+   readonly parsed: CursorAboutResult;
+   readonly discoveredModels?: ReadonlyArray<ServerProviderModel>;
+   readonly discoveryWarning?: string;
++  readonly skills?: ServerProviderDraft["skills"];
++  readonly slashCommands?: ServerProviderDraft["slashCommands"];
+ }): ServerProviderDraft {
+   const message = joinProviderMessages(input.parsed.message, input.discoveryWarning);
+   return buildServerProvider({
+@@ -750,6 +756,8 @@ export function buildCursorProviderSnapshot(input: {
+       input.cursorSettings.customModels,
+       EMPTY_CAPABILITIES,
+     ),
++    ...(input.skills ? { skills: input.skills } : {}),
++    ...(input.slashCommands ? { slashCommands: input.slashCommands } : {}),
+     probe: {
+       installed: true,
+       version: input.parsed.version,
+@@ -1207,6 +1215,10 @@ export const checkCursorProviderStatus = Effect.fn("checkCursorProviderStatus")(
+       discoveredModels = discoveryExit.value;
+     }
+   }
++  const skills = yield* discoverLocalAgentSkills({
++    homePath: NodeOs.homedir(),
++  });
++  const slashCommands = toSlashCommandsFromSkills(skills);
+   return buildCursorProviderSnapshot({
+     checkedAt,
+     cursorSettings,
+@@ -1216,6 +1228,8 @@ export const checkCursorProviderStatus = Effect.fn("checkCursorProviderStatus")(
+       () => [] as const,
+     ),
+     ...(discoveryWarning ? { discoveryWarning } : {}),
++    skills,
++    slashCommands,
+   });
+ });
+ 
+diff --git a/apps/server/src/provider/discoverLocalAgentSkills.test.ts b/apps/server/src/provider/discoverLocalAgentSkills.test.ts
+new file mode 100644
+index 0000000..7a91e71
+--- /dev/null
++++ b/apps/server/src/provider/discoverLocalAgentSkills.test.ts
+@@ -0,0 +1,69 @@
++import assert from "node:assert/strict";
++import { describe, it } from "node:test";
++
++import {
++  discoverLocalAgentSkillRoots,
++  parseSkillFrontmatter,
++  toSlashCommandsFromSkills,
++} from "./discoverLocalAgentSkills.ts";
++
++describe("parseSkillFrontmatter", () => {
++  it("should parse name and description from SKILL.md frontmatter", () => {
++    const parsed = parseSkillFrontmatter(`---
++name: zereight-review
++description: Comprehensive code review skill for practical PR feedback.
++---
++
++# Body
++`);
++
++    assert.deepEqual(parsed, {
++      name: "zereight-review",
++      description: "Comprehensive code review skill for practical PR feedback.",
++    });
++  });
++
++  it("should return null when frontmatter name is missing", () => {
++    assert.equal(
++      parseSkillFrontmatter(`---
++description: Missing name
++---
++`),
++      null,
++    );
++  });
++});
++
++describe("discoverLocalAgentSkillRoots", () => {
++  it("should include default home skill directories", () => {
++    assert.deepEqual(
++      discoverLocalAgentSkillRoots({ homePath: "/Users/test" }),
++      [
++        "/Users/test/.agents/skills",
++        "/Users/test/.cursor/skills",
++        "/Users/test/.codex/skills",
++      ],
++    );
++  });
++});
++
++describe("toSlashCommandsFromSkills", () => {
++  it("should map skills to provider slash commands", () => {
++    assert.deepEqual(
++      toSlashCommandsFromSkills([
++        {
++          name: "agent-browser",
++          path: "/tmp/agent-browser/SKILL.md",
++          enabled: true,
++          shortDescription: "Browse the web",
++        },
++      ]),
++      [
++        {
++          name: "agent-browser",
++          description: "Browse the web (user skill)",
++        },
++      ],
++    );
++  });
++});
+diff --git a/apps/server/src/provider/discoverLocalAgentSkills.ts b/apps/server/src/provider/discoverLocalAgentSkills.ts
+new file mode 100644
+index 0000000..7abd651
+--- /dev/null
++++ b/apps/server/src/provider/discoverLocalAgentSkills.ts
+@@ -0,0 +1,137 @@
++import type { ServerProviderSkill, ServerProviderSlashCommand } from "@t3tools/contracts";
++import * as FileSystem from "effect/FileSystem";
++import * as Effect from "effect/Effect";
++import * as Path from "effect/Path";
++
++const FRONTMATTER_BOUNDARY = /^---\s*$/;
++const FRONTMATTER_NAME = /^name:\s*(.+?)\s*$/m;
++const FRONTMATTER_DESCRIPTION = /^description:\s*(.+?)\s*$/m;
++
++function stripQuotes(value: string): string {
++  const trimmed = value.trim();
++  if (
++    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
++    (trimmed.startsWith("'") && trimmed.endsWith("'"))
++  ) {
++    return trimmed.slice(1, -1);
++  }
++  return trimmed;
++}
++
++export function parseSkillFrontmatter(content: string): {
++  readonly name: string;
++  readonly description?: string;
++} | null {
++  const lines = content.split(/\r?\n/);
++  if (lines.length < 3 || !FRONTMATTER_BOUNDARY.test(lines[0] ?? "")) {
++    return null;
++  }
++
++  let closingIndex = -1;
++  for (let index = 1; index < lines.length; index += 1) {
++    if (FRONTMATTER_BOUNDARY.test(lines[index] ?? "")) {
++      closingIndex = index;
++      break;
++    }
++  }
++  if (closingIndex < 0) {
++    return null;
++  }
++
++  const frontmatter = lines.slice(1, closingIndex).join("\n");
++  const nameMatch = FRONTMATTER_NAME.exec(frontmatter);
++  if (!nameMatch) {
++    return null;
++  }
++
++  const name = stripQuotes(nameMatch[1] ?? "");
++  if (name.length === 0) {
++    return null;
++  }
++
++  const descriptionMatch = FRONTMATTER_DESCRIPTION.exec(frontmatter);
++  const description = descriptionMatch ? stripQuotes(descriptionMatch[1] ?? "") : undefined;
++
++  return description && description.length > 0 ? { name, description } : { name };
++}
++
++export function discoverLocalAgentSkillRoots(input: {
++  readonly homePath: string;
++  readonly projectRoots?: ReadonlyArray<string>;
++}): ReadonlyArray<string> {
++  const roots = [
++    `${input.homePath}/.agents/skills`,
++    `${input.homePath}/.cursor/skills`,
++    `${input.homePath}/.codex/skills`,
++  ];
++  for (const projectRoot of input.projectRoots ?? []) {
++    roots.push(`${projectRoot}/.cursor/skills`);
++    roots.push(`${projectRoot}/.agents/skills`);
++  }
++  return roots;
++}
++
++export function toSlashCommandsFromSkills(
++  skills: ReadonlyArray<ServerProviderSkill>,
++): ReadonlyArray<ServerProviderSlashCommand> {
++  return skills.map((skill) => ({
++    name: skill.name,
++    description: skill.shortDescription
++      ? `${skill.shortDescription} (user skill)`
++      : skill.description
++        ? `${skill.description} (user skill)`
++        : "Run provider skill (user skill)",
++  }));
++}
++
++export const discoverLocalAgentSkills = Effect.fn("discoverLocalAgentSkills")(function* (input: {
++  readonly homePath: string;
++  readonly projectRoots?: ReadonlyArray<string>;
++}) {
++  const fs = yield* FileSystem.FileSystem;
++  const path = yield* Path.Path;
++  const byName = new Map<string, ServerProviderSkill>();
++
++  for (const root of discoverLocalAgentSkillRoots(input)) {
++    const exists = yield* fs.exists(root).pipe(Effect.orElseSucceed(() => false));
++    if (!exists) {
++      continue;
++    }
++
++    const entries = yield* fs.readDirectory(root).pipe(Effect.orElseSucceed(() => [] as const));
++    for (const entryName of entries) {
++      if (entryName.startsWith(".")) {
++        continue;
++      }
++
++      const skillDir = yield* path.join(root, entryName);
++      const skillPath = yield* path.join(skillDir, "SKILL.md");
++      const skillExists = yield* fs.exists(skillPath).pipe(Effect.orElseSucceed(() => false));
++      if (!skillExists) {
++        continue;
++      }
++
++      const content = yield* fs.readFileString(skillPath).pipe(Effect.orElseSucceed(() => ""));
++      const parsed = parseSkillFrontmatter(content);
++      if (!parsed || byName.has(parsed.name)) {
++        continue;
++      }
++
++      const skill: ServerProviderSkill = {
++        name: parsed.name,
++        path: skillPath,
++        enabled: true,
++        scope: "user",
++        ...(parsed.description
++          ? {
++              description: parsed.description,
++              shortDescription: parsed.description.slice(0, 160),
++            }
++          : {}),
++      };
++      byName.set(parsed.name, skill);
++    }
++  }
++
++  return [...byName.values()].sort((left, right) => left.name.localeCompare(right.name));
++});

@@ -20,6 +20,17 @@ This syncs repo views, links `~/.agents/skills` → repo SSOT, patches Pi `setti
 
 Check only (no sync): `npm run verify:pi-skills`.
 
+### T3 Code (Cursor provider)
+
+T3 `$` skill search reads `~/.t3/caches/cursor.json` → `skills[]`. Cursor probe leaves it empty:
+
+```bash
+npm run sync:t3-cursor-skills
+# restart T3 Code, then use $skill-name or /skill-name
+```
+
+See `skill-not-showing` for full T3 diagnostics.
+
 ### Pi skill collision warnings (repo-owned skills)
 
 If Pi reports collisions for `roborev-guide`, `zereight-review`, or `autocontext`:

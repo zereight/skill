@@ -51,13 +51,32 @@ For each group, capture:
 - Example URL using non-sensitive sample values
 - Open questions
 
-BankX notification PRD pattern examples:
+BankX notification PRD pattern examples (align with **mobile repo**, not legacy PRD screen names):
 
-| Need | Target | Path |
-|---|---|---|
-| E-slip | `ESlipScreen` | `/e-slip/{orderId}` |
-| Outgoing transaction detail | `EverydayAccountWithdrawalTransactionScreen` | `/transactions/{accountNumber}/withdrawal/{referenceNo}/{detailId}/{systemTransactionDate}` |
-| Incoming/refund transaction detail | `EverydayAccountDepositTransactionScreen` | `/transactions/{accountNumber}/deposit/{referenceNo}/{detailId}/{systemTransactionDate}` |
+| Need | Target screen (actual) | Suggested path (Jira) | Notes |
+|---|---|---|---|
+| E-slip | `ESlipScreen` (`ESlipNavigator`) | `/e-slip/{orderId}` | Separate from deposit transaction history detail |
+| Everyday account main (transaction list) | `EverydayAccountScreen` | `/everyday-account` | **Registered today** — query `accountNumber` |
+| Everyday account transaction detail (all types) | `EverydayAccountTransactionDetailScreen` | `/everyday-account/detail` (segment name TBD with backend) | **Not registered yet** — one screen for transfer in/out, ATM, bill pay, lending, default |
+
+**Deposit vs withdrawal:** PRDs may say “deposit detail” / “withdrawal detail”, but the app has **one** navigable screen (`EverydayAccountTransactionDetailScreen`). API `GetTransactionDetail` returns `oneofKind`; UI shape (deposit / withdrawal / edit) is chosen in-app. Request **one MAR ticket + one route** unless product explicitly needs marketing-only URL aliases to the same target.
+
+**Required parameters for transaction detail** (same as in-app list tap — see `TransactionDetailParams` in `navigation-type.ts`):
+
+| Parameter | Meaning |
+|---|---|
+| `accountNumber` | Everyday account number (navigator / `EverydayAccountContext`) |
+| `referenceNo` | System reference number (transaction group key) |
+| `detailId` | Transaction detail serial (unique key) |
+| `systemTransactionDate` | Accounting date `yyyyMMdd` (e.g. `20250115`) |
+
+Example URL for MAR description (scheme varies by env; path/query shape for mobile implementation):
+
+```text
+bankxappdevelop://everyday-account/detail?accountNumber=1234567890&referenceNo=TXN001&detailId=42&systemTransactionDate=20250115
+```
+
+**Not in scope for this screen:** Term Deposit / Piggy Bank / Closed Account transaction lists have **no** `*TransactionDetailScreen` or `GetTransactionDetail` navigation today.
 
 If an item says "go to detail" but the screen/state is unclear, mark it as clarification; do not invent a path.
 
@@ -120,8 +139,8 @@ Open questions:
 
 Summary examples:
 - `Cardless withdrawal e-slip screen deep link request`
-- `Everyday account withdrawal transaction detail deep link request`
-- `Everyday account deposit transaction detail deep link request`
+- `Everyday account screen deep link request` (list only — if extending existing route)
+- `Everyday account transaction detail deep link request` (single ticket for inbound/outbound/refund notifications)
 
 ## 5. Confirm before Jira writes ⛔ BLOCKING
 
@@ -179,4 +198,17 @@ https://bankx.atlassian.net/jira/software/projects/MAR/boards/1233
 - Do not skip the `**Requester / Status: Request**` header.
 - Do not move statuses unless the user asks or the workflow explicitly requires it.
 - If target screen is ambiguous, ask or create a clarification ticket; do not guess.
-- If working in the mobile repo, inspect `packages/foundation/src/navigation/deep-link-path-config.ts` and `packages/foundation/src/navigation/navigation-type.ts` before claiming a route already exists.
+- **Do not file separate MAR tickets** for “deposit transaction detail” and “withdrawal transaction detail” when both target `EverydayAccountTransactionDetailScreen` with the same four parameters.
+- If working in the mobile repo, inspect before claiming a route exists:
+  - `packages/foundation/src/navigation/deep-link-path-config.ts` — `DEEP_LINK_PATH_CONFIG`, `DEEP_LINK_PARAM_MAP`
+  - `packages/foundation/src/navigation/navigation-type.ts` — screen param types
+  - `@features/everyday-account/src/everyday-account-navigator.tsx` — registered stack screens
+
+### Mobile SSOT snapshot (verify on each use; may drift)
+
+| Path (after scheme) | Screen | Query params in `DEEP_LINK_PARAM_MAP` |
+|---|---|---|
+| `everyday-account` | `EverydayAccountScreen` | `accountNumber` → `EverydayAccountNavigator` |
+| `everyday-account/detail` (planned) | `EverydayAccountTransactionDetailScreen` | `accountNumber` (navigator) + `referenceNo`, `detailId`, `systemTransactionDate` (detail) |
+
+Login: deep links defer until session exists (`packages/foundation/src/navigation/deep-link-config.ts`).
