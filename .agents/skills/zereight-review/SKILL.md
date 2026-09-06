@@ -1,12 +1,17 @@
 ---
 name: zereight-review
-description: Comprehensive code review skill for practical PR feedback. Use for feature, bugfix, and refactor reviews. Prioritizes correctness, edge cases, logic invariants, fallback-chain safety, async state transitions, architecture analysis, flow ownership and screen-role maintainability, ponytail simplicity, motion craft (review-animations), OWASP security, and clear actionable feedback.
+description: Comprehensive code review skill for practical PR feedback. Use for feature, bugfix, and refactor reviews. Prioritizes correctness, edge cases, dual-path symptom fixes vs delete-a-path alternatives, logic invariants, async state, flow ownership, ponytail simplicity, motion craft, OWASP, and actionable feedback.
 ---
 
 # zereight-review
 
 Prioritize **correctness and risk** over style nitpicks.
 Default tone: concise, direct, actionable.
+
+**Navigation PR rule (non-negotiable):** No navigation/back-stack finding
+without **symbol + production caller(s) + path tag + terminal step** (hop vs
+`push`/`replace`/`navigateToDestination`). See
+`references/navigation-review-gate.md`.
 
 ## Mandatory Review Ensemble -- NON-NEGOTIABLE
 
@@ -30,22 +35,26 @@ Required instruction sources to load before reviewing:
 - `ponytail-review` (`/Users/tao.exe/.cursor/skills/ponytail-review/SKILL.md`)
 - `review-animations` (`/Users/tao.exe/.claude/skills/review-animations/SKILL.md` + `STANDARDS.md`)
 - `references/flow-ownership-review.md` (this skill — screen role, data owner, RN preload vs upstream prepare)
+- `references/async-effect-cancellation.md` (this skill — generation token vs boolean for async effect cleanup)
+- `references/direction-alternative-gate.md` (this skill — symptom-fix vs reorder vs delete-a-path; 1-line PRs in scope)
+- `references/navigation-review-gate.md` (this skill — caller context, hop vs terminal nav diff, path tags, scenario matrix, author observation, echo dedup)
+- `references/problem-map-output.md` (this skill — **문제 지도** final-output template: 어디/뭐/언제/유저영향/우선순위)
 
 Required subagent review passes:
 
 | Subagent pass | Builtin agent | Model (required) | Required basis | Review focus |
 | --- | --- | --- | --- | --- |
 | Baseline full-diff reviewer | `reviewer` | session (`inherit`) | `code-review` | finding-first output, severity, full diff coverage, `comment-worthy` / `no comment` |
-| Regression and contract reviewer | `reviewer` | session (`inherit`) | `code-review-expert` | behavioral regressions, API/prop contracts, hidden state and edge-case risk |
+| Regression and contract reviewer | `reviewer` | session (`inherit`) | `code-review-expert` + `references/navigation-review-gate.md` when nav scope | behavioral regressions, API/prop contracts, hidden state and edge-case risk; **per-caller** stack findings with path tags — no whole-PR nav broadcast |
 | File coverage reviewer | `worker` | session (`inherit`) | `code-reviewer` | every changed file and hunk, missing tests, maintainability risks |
 | Quality gate reviewer | `worker` | session (`inherit`) | `agent-skills:code-review-and-quality` | correctness, reliability, maintainability, security, test quality |
 | Thermo-nuclear maintainability reviewer | `reviewer` | session (`inherit`) | `thermo-nuclear-code-quality-review` | code judo / structural simplification, 1k-line boundary, spaghetti branching, abstraction quality, layer boundaries |
 | Flow ownership & screen-role reviewer | `reviewer` | session (`inherit`) | `references/flow-ownership-review.md` + repo data layering (`CLAUDE.md`) | data owner vs orchestration owner; upstream prepare vs target-owned fetch; `navigation.preload`; nav-param growth; requirement-change blast radius; loading UI on async gap |
-| Ponytail simplicity reviewer | `reviewer` | session (`inherit`) | `ponytail-review` | yagni, duplicate orchestration, dual hook paths, shrink/delete — **correctness/security out of scope** |
+| Ponytail simplicity reviewer | `reviewer` | session (`inherit`) | `ponytail-review` + `references/direction-alternative-gate.md` | yagni, duplicate orchestration, dual hook paths, shrink/delete, **sibling-path grep on target-swap** — **correctness/security out of scope** |
 | Motion craft reviewer | `reviewer` | session (`inherit`) | `review-animations` + `STANDARDS.md` | motion-only hunks; Ten Non-Negotiable Standards; Before/After/Why table + Block/Approve verdict; RN map transform/opacity=spring interruptibility=GPU; **not** general logic |
 | Agent orchestration reviewer | `delegate` | session (`inherit`) | `agent-skills:using-agent-skills` | whether the work was split correctly and whether any review lens is missing (thermo-nuclear, flow ownership, ponytail, motion craft, React/RN) |
-| React/RN specialist reviewer | `reviewer` | session (`inherit`) | `zereight-react-native-optimizer` + react-doctor JSON | effect/render/list/animation/native perf regressions; **Skia GPU readback loops** (`makeImageSnapshot` + `readPixels` in rAF/effect); reconcile react-doctor diagnostics with diff evidence |
-| Zereight coordinator | (parent) | session (parent) | this skill | three-dot diff, RED-team mindset, verification discipline, final synthesis |
+| React/RN specialist reviewer | `reviewer` | session (`inherit`) | `zereight-react-native-optimizer` + react-doctor JSON + `references/navigation-review-gate.md` when nav scope | effect/render/list/animation/native perf regressions; **Skia GPU readback loops** (`makeImageSnapshot` + `readPixels` in rAF/effect); reconcile react-doctor diagnostics with diff evidence; nav findings split by caller/path |
+| Zereight coordinator | (parent) | session (parent) | this skill + `references/direction-alternative-gate.md` + `references/navigation-review-gate.md` when nav scope | three-dot diff, RED-team, verification, **A/B/C direction table**, caller/scenario gates, author observation reconcile, echo dedup, final synthesis |
 
 **Flow ownership pass rule:** Spawn when the PR changes any navigable screen,
 navigator, route params, or multi-step handoff (`*Screen`, `*-screen.tsx`,
@@ -56,6 +65,10 @@ has no navigation/screen boundary change.
 **Ponytail pass rule:** Spawn when the diff has substantial logic in
 `*.ts` / `*.tsx` (same scope as react-doctor). Skip for assets/locales/tests-only.
 Do not promote ponytail `delete`/`yagni` to 🟠+ without user-facing risk evidence.
+**1-line target-swap is in scope** (`CLIENTS.A`→`B`, mock↔real, dual upsert).
+Do **not** accept `Lean already. Ship` until the pass greps the sibling
+identifier's production callers. Inject `references/direction-alternative-gate.md`
+into the ponytail prompt.
 
 **React/RN pass rule:** Spawn when the PR changes any `*.ts` / `*.tsx` outside
 `**/*.test.*`, `**/__snapshots__/**`, `**/locales/**` only. If the PR is
@@ -195,7 +208,7 @@ Execution rules:
     },
     {
       "agent": "reviewer",
-      "task": "Thermo-nuclear maintainability review. Skill: thermo-nuclear-code-quality-review. Use parent session model. PR: ..."
+      "task": "Thermo-nuclear maintainability review. Skill: thermo-nuclear-code-quality-review + zereight-review references/direction-alternative-gate.md. Dual-path 1-line workarounds: prefer reorder or delete unused client, not extract dual-write helper. Use parent session model. PR: ..."
     },
     {
       "agent": "reviewer",
@@ -203,7 +216,7 @@ Execution rules:
     },
     {
       "agent": "reviewer",
-      "task": "Ponytail simplicity review. Skill: ponytail-review. Use parent session model. PR: ..."
+      "task": "Ponytail simplicity review. Skill: ponytail-review + zereight-review references/direction-alternative-gate.md. On target-swap / dual-client hunks, grep sibling callers before Lean already. Use parent session model. PR: ..."
     },
     {
       "agent": "reviewer",
@@ -223,7 +236,7 @@ Then spawn orchestration separately:
 ```json
 {
   "agent": "delegate",
-  "task": "Orchestration review: verify all ensemble axes were covered. Use parent session model. ..."
+  "task": "Orchestration review: verify all ensemble axes were covered including direction-alternative A/B/C table. Use parent session model. ..."
 }
 ```
 
@@ -267,9 +280,28 @@ single-pass review as an exception, not the default.
 6. **Motion scope gate** — grep diff for motion triggers (see **Motion craft pass
    rule**). Record in `검증 결과` as `motion scope: yes — <triggers>` or
    `motion scope: no`. No CLI; scope only decides whether to spawn motion pass.
-7. Spawn all ensemble passes in parallel (or sequential if runtime limits concurrency)
-8. Spawn orchestration `delegate` pass after worker/reviewer passes complete
-9. Coordinator synthesis + `검증 결과` (re-check Axis Gate before promoting any 🟠+)
+7. **Direction Alternative Gate** — load `references/direction-alternative-gate.md`.
+   On logic PRs, draft A (PR) / B (reorder) / C (delete a path) **before**
+   trusting ensemble Approve. Grep sibling identifiers. Read existing PR
+   comments as competing hypotheses, not as things to refute. Record the table
+   in `검증 결과`. 1-line / single-file does **not** skip this gate.
+8. **Navigation & caller-context gates** (when nav scope — see
+   `references/navigation-review-gate.md`):
+   - **Caller Context Gate** — grep production callers per changed nav symbol;
+     fill caller table before any 🟠 navigation finding.
+   - **Navigation Diff Gate** — separate **hop** vs **terminal** step
+     (`push`/`replace`/`navigateToDestination`); never compare hop `navigate`
+     with terminal `push` on a different target.
+   - **Path tags** — tag findings (`resume-from-stem`, `in-flow-continuous`,
+     `post-fr-success`, …); record in `검증 결과`.
+   - **Scenario Matrix Gate** — before 🟠 stack/back findings; UNVERIFIED → max 🟡.
+   Skip only when zero navigation hunks; record `navigation gate: skipped`.
+9. Spawn all ensemble passes in parallel (or sequential if runtime limits concurrency)
+10. Spawn orchestration `delegate` pass after worker/reviewer passes complete
+11. Coordinator synthesis + `검증 결과` (re-check Axis Gate, Direction
+    Alternative Gate, **caller/scenario gates**, **author observations**,
+    **echo dedup** before Approve; do not promote “all passes agree” without
+    per-path evidence)
 
 **Subagent spawning counts as available** when any of these exist in the runtime:
 Pi `subagent` tool, Cursor `Task` tool, `cursor_worker`, or equivalent multi-agent spawn.
@@ -286,9 +318,11 @@ When single-pass fallback is active, still:
 - Load all reviewer instruction sources sequentially (including
   `thermo-nuclear-code-quality-review`, `references/flow-ownership-review.md`,
   `ponytail-review`, `review-animations` + `STANDARDS.md` when motion scope,
-  and `zereight-react-native-optimizer` when React/RN scope).
-- Cover every ensemble axis in one pass (including flow ownership, ponytail, and
-  motion craft when in scope).
+  `zereight-react-native-optimizer` when React/RN scope, and
+  `references/direction-alternative-gate.md` on logic PRs,
+  `references/navigation-review-gate.md` when nav scope).
+- Cover every ensemble axis in one pass (including flow ownership, ponytail,
+  motion craft when in scope, and the Direction Alternative A/B/C table).
 - Run react-doctor, rnsec, SonarLint, and fuck-u-code prefights when applicable.
 
 **If subagent spawning IS available:** spawn every required pass. Partial
@@ -425,11 +459,14 @@ Review preflight safeguards:
   `**/__snapshots__/**`, `**/locales/**` only.
   - If **not** React/RN scope (assets/locales/tests-only): state
     `react-doctor skipped (not a React/RN logic PR)` in `검증 결과` and continue.
-  - If React/RN scope, run from repo root (network required):
+  - If React/RN scope, run from **PR review worktree** or confirm primary
+    workspace `HEAD` equals PR source commit (network required):
     ```bash
     npx react-doctor@latest --json --no-score -y \
       --diff refs/remotes/origin/<destination>
     ```
+    Run inside review worktree when primary workspace is on another branch.
+    Wrong-branch scan → note in `검증 결과`; do not cite diagnostics as PR findings.
     Use PR metadata destination branch. When git refs are unavailable, use
     `--diff origin/develop` or the PR's known target branch. As a last resort,
     scan bounded parent path(s) of changed files (same parent-path rule as
@@ -630,10 +667,27 @@ You are an adversary, not a rubber stamp. Your job is to break the code, not con
 - **Think like an attacker**: For every change, ask "How can this fail? How can this be exploited? What input breaks this?"
 - **Never trust the happy path**: Code that works for expected inputs is the baseline, not the goal. Hunt for the unexpected.
 - **Simulate hostile inputs**: Empty strings, negative numbers, null, undefined, MAX_SAFE_INTEGER, special characters, concurrent calls, network timeouts.
-- **Challenge assumptions**: If the author assumes X is always true, find the scenario where X is false.
+- **Challenge assumptions**: If the author assumes X is always true, find the scenario where X is false. If the fix is “call the other client / other hook”, ask **why two exist** and whether one can die.
+- **Question added workarounds**: A 1-line retarget that matches the currently-alive object is a symptom. Ask whether creating the intended object first, or deleting the extra object, is smaller.
 - **Question removed code**: Deleted code had a reason to exist. Verify the reason is truly gone, not just hidden.
 - **Trace error propagation end-to-end**: Follow every throw/reject/return-undefined through all callers. One unhandled path = one crash in production.
 - **Don't approve because it "looks fine"**: If you can't construct a specific failure scenario, dig deeper -- absence of evidence is not evidence of absence.
+
+## Self-challenge gate — MANDATORY (before filing any finding)
+
+RED-team the code **and** your own claim. A finding is promoted only after its
+suggested fix survives the same adversarial pass:
+
+- **Fix-breaks-what**: construct the failure scenario for the world where the
+  author applies your minimal fix. If the fix introduces a worse bug than the
+  finding, withdraw the finding.
+- **Condition findings need both directions**: proving the true path is not
+  enough. Simulate the false transition **plus the user's next action**
+  (delete, cancel, back, retry, resubmit) on the flipped state. "Always X, so
+  pointless" must show the next action stays intact when not-X.
+- **Deletion proposals need a trace**: "harmless, so deletable" must trace all
+  paths the deleted code guarded, including paths that only matter after a
+  state flip (full → delete, valid → reset).
 
 ## Verification Discipline — MANDATORY
 
@@ -660,6 +714,7 @@ When drafting a finding, if you write any of these phrases, STOP and verify:
 - "라이브러리 X는 ~~한다" (library behavior assertion)
 - "이 setState는 re-render를 일으켜 jank를 유발한다" (performance claim without measurement)
 - "`readPixels` / `makeImageSnapshot` in rAF or effect loop" (Skia GPU readback — **do not demote**; apply **Skia / GPU readback checks** below)
+- "`let cancelled` / `cancelledRef.current = false` at start of effect + `void …Async()`" (async effect cancellation — apply **Async effect cancellation checks**)
 
 ### Rule 3: Verification patterns by claim type
 
@@ -728,6 +783,10 @@ Document your own missed findings here to build calibration:
 - **PR #1790 period row key**: JSDoc "same length can appear in multiple groups" + stories mock comment "duplicate `0` rows, non-enum `term` ints" were ignored as "defensive coding". Actually evidence of server API data quality issue requiring backend attention. Missed the upstream root cause entirely.
 - **PR #3469 H1 (fraud awareness result title)**: Treated mock-era `allWrong = correctCount === 0` as the correctness baseline and filed 🟠 when PR switched title/CTA to server `passed` / `retryable`. PR description was explicitly mock→API (axis B). Ensemble ×7 repeated the same wrong premise. i18n key `allWrong.title` was confused with runtime variable `allWrong`. Correct stance: withdraw “regression”; ask whether API allows `passed=false` with `correctCount>0`; keep real findings (missing `handleUnknownError`, bridge double-tap). **Fix:** PR Axis Gate + Rule 6 before any 🟠 on branching changes.
 - **PAYT-2927 / MP-2549 (e-slip Skia GPU readback poll)**: Added `canvas.makeImageSnapshot()` + `readPixels()` inside an rAF loop to gate auto-save until the receipt background painted. Axis A bugfix looked correct; JSDoc and `MAX_PAINT_CHECK_ATTEMPTS` made it seem thoughtful. Missed in review because preflight tools do not flag Skia/Metal patterns and verification discipline demoted “theoretical” native crashes. Production Datadog later showed Metal `SIGABRT` on `ESlipScreen` entry (~260ms after load) during navigation transition + auto-save. Fix merged as CPU offscreen bake (`Skia.Surface.Make`, 1× snapshot, no GPU readback loop). **Fix:** mandatory **Skia / GPU readback checks**; do not treat GPU canvas readback loops as “maybe slow” — pattern + capture/auto-save/screen-entry path is enough for 🟠 without Datadog.
+- **PLF-3866 / BankXModal (boolean async cancel)**: `cancelledRef.current = false` on each `visible=true` effect run allowed a **stale** `showModalAsync` to fade in after `visible: true → false → true` before the first `await dismiss()` finished — boolean cleanup sets `cancelled=true`, but the next run resets to `false`, so the old async cannot tell “new run” from “still valid”. **Fix:** generation token (`showModalGenerationRef`) per effect run; cleanup increments global generation. See `references/async-effect-cancellation.md`.
+- **PR #4049 / MP-2927 (CERT upsert symptom fix)**: Axis-A 1-line retarget `upsertMetadataAsync(CLIENTS.API → CERT)` because API client was created after `createApplicationIDAsync`. Ensemble ×8 Approved A: spec files used `client: CLIENTS.CERT`, init order made CERT the only live client, Nicholas’ “inject into both” was refuted via `getInitialMetadataAsync`. Later fix was create API client first and route pre-register APIs through API (CERT path removable). **Miss:** treated API-spec `client:` as architecture SSOT; skipped architecture on “trivial 1-line”; ponytail `Lean already` without sibling-caller grep; did not write B=reorder / C=delete CERT. **Fix:** **Direction Alternative Gate** (`references/direction-alternative-gate.md`) — 1-line PRs in scope; comments are hypotheses; spec `client:` is a setting.
+- **PR #4048 / MP-2924 (onboarding terms blank screen removal)**: Compared `navigate(OnboardingNavigator → hop)` with `push(Terms)` as equivalent migration; develop’s **terminal** step was `replace(Terms)`. Applied `resetTargetStack` / Fatca back-stack 🟠 to **whole PR** though `navigateToOnboardingProductTermsAsync` had **one caller** (SP6, `resume-from-stem`, end stack `[Stem,Terms]`). Ensemble ×N echoed without caller grep. Author said “back shows Home” — downrank delayed. **Fix:** **Navigation & caller-context gates** (`references/navigation-review-gate.md`) — Caller Context, 3-step Navigation Diff, path tags, Scenario Matrix, Author Observation, Echo dedup.
+- **PR #4107 phone `editable` (always-true condition filed as dead code)**: Proved the true path (formatted length capped at 12, so `<= 12` never false) and proposed `<` / deletion — but never simulated the false transition's next user action. At full (12), `false` would lock the keyboard and block deletion: the fix was a worse bug than the finding. Withdrew the finding. **Fix:** **Self-challenge gate** — condition findings need both directions plus next-action simulation.
 
 ## Full-Diff Inline Comment Mindset -- MANDATORY
 
@@ -757,7 +816,7 @@ Post on the PR host only when the user clearly requests it, for example:
 These **do not** grant posting consent by themselves:
 
 - `리뷰해줘`, `zereight-review`, `$zereight-review`, `재리뷰`, `PR 리뷰`, `코드 리뷰` → analyze and report in chat only
-- Fetching existing PR threads (`bb_ls_pr_comments`, `gh` comment APIs, etc.) → context only; still do not post without consent
+- Fetching existing PR threads (`bb_ls_pr_comments`, `gh` comment APIs, etc.) → context only; still do not post without consent. Treat each thread as a **competing hypothesis** for the Direction Alternative Gate — adopt it or explain why that alternative is worse; do not refute it from the PR description alone.
 
 ### Internal labels vs host comments
 
@@ -866,6 +925,23 @@ classify the PR axis from description / commits / diff intent. Record it in
 5. Theoretical paths that need an unconfirmed API shape (e.g. “what if
    `passed=false` with `correctCount>0`?”) → ⚪ Ask / product-or-spec check,
    not 🟠 Major, until spec/GIF/tests confirm the path exists.
+
+**Path tags (navigation / screen-flow PRs — mandatory extension):**
+
+When the diff touches navigation, screens, or multi-step handoffs, tag each
+navigation finding with at least one path (see `references/navigation-review-gate.md`):
+
+| Tag | Use when |
+| --- | --- |
+| `resume-from-stem` | Save point / Home resume CTA |
+| `in-flow-continuous` | First-time flow without save-point re-entry |
+| `post-fr-success` | After face-auth (or similar) success CTA |
+| `deep-link` | Direct route entry |
+
+Record in `검증 결과`: `path tags: <tags used in findings> | none (not nav PR)`.
+
+Unverified stack theory for a path → **max 🟡** for that path unless scenario
+matrix row or author/device evidence exists.
 
 ### Step 1: Fetch and diff against origin/develop (THREE-DOT DIFF)
 
@@ -981,27 +1057,63 @@ Use this skill when:
    - Check stale closure/state usage.
    - Verify open/close/reset/submit/error ordering.
    - Ensure loading flags recover in all paths.
+   - For async work started inside `useEffect` / `useBankXEffect`, verify
+     cleanup invalidates in-flight continuations — prefer **generation token**
+     over boolean `cancelled` reset at effect entry (see
+     `references/async-effect-cancellation.md`).
 
-7. **UI consistency checks**
+7. **Async effect cancellation checks** (run when effect starts `void …Async()` or awaits after `visible` / `enabled` flip)
+
+   **Scope trigger — grep the diff for any of:**
+   `let cancelled`, `cancelledRef`, `isCancelled`, `void <name>Async(` inside
+   `useEffect` / `useBankXEffect`, modal/sheet `visible`, keyboard dismiss await.
+
+   **Boolean trap:** resetting `cancelledRef.current = false` when the effect
+   re-runs lets a **previous** async complete after `visible: true → false → true`
+   because the new run clears the cancel flag. Prefer monotonic **generation id**
+   captured per effect run; increment in cleanup.
+
+   **Preferred (no `let`):**
+
+   ```ts
+   const generation = ref.current + 1
+   ref.current = generation
+   // after await:
+   if (ref.current !== generation) return
+   // cleanup:
+   ref.current += 1
+   ```
+
+   **Keyboard + modal:** `KeyboardController.dismiss()` already awaits
+   `keyboardDidHide` — do not suggest arbitrary `setTimeout` races unless hang is
+   proven and input refocus is unfixed. Pair dismiss await with generation, not
+   250ms heuristics.
+
+   **Severity:** stale async causing modal fade-in / setState / navigation after
+   re-open → 🟠 Major when realistic; missing any cancel guard → 🟠; boolean-only
+   with rare re-fire → 🟡. Full rubric:
+   `references/async-effect-cancellation.md`.
+
+8. **UI consistency checks**
    - Scan repeated UI patterns (section labels, headers, list items, cards) for style mismatches.
    - Verify fontSpec, themedColor, spacing, padding are identical across elements that serve the same visual role.
    - Flag when one sibling element uses a different token than the rest (e.g., FONT.B16 vs FONT.B18 for section labels in the same screen).
    - Check icon sizes, border radii, and gap values for consistency within a component group.
 
-8. **State transition UX checks**
+9. **State transition UX checks**
    - When React `key` changes cause remount, verify user input is either preserved, impossible before the transition, or explicitly discarded with clear UX (loading skeleton, disabled fields).
    - Detect "input loss on async load" pattern: form renders with placeholder defaults → async data arrives → key change remounts form → any user input typed before load is silently lost.
    - Verify loading→loaded transitions: are interactive fields disabled or hidden during loading? Does the transition cause layout shift or flash of empty content?
    - Check that `disabled` state covers all interactive elements (inputs, dropdowns, buttons) during loading, not just the submit CTA.
 
-9. **Expensive-before-cheap checks**
+10. **Expensive-before-cheap checks**
    - Before any API call or I/O operation, check if there's a condition that could skip it.
    - Trace function calls into their internals — if a cheap check (e.g., `isSupported`, `isEnabled`, feature flag) lives inside a called function, verify it runs before any expensive operation in the caller.
    - Pattern to detect: API call on line N, condition check inside function called on line N+1.
    - Fix: Hoist the cheap check before the expensive operation.
    - Example: `GetChallenge()` called before `generateAttestation()` which checks `isSupported` internally → wasteful API call on unsupported devices.
 
-10. **Refactor-only layout responsibility checks**
+11. **Refactor-only layout responsibility checks**
     - When a PR claims "only code location changes" or extracts a base component, build a before/after **style ownership map** before concluding equivalence. Map every style property to its owner in both versions.
       - interactive wrapper: Pressable / AnimatedPressable / Touchable
       - content layout row
@@ -1032,7 +1144,7 @@ Use this skill when:
       - If behavior likely still works but intent/reuse risk is unclear, report as 🔵 Trivial or 🟡 Minor.
       - Do not say "layout equivalent" until style ownership and reusable-boundary effects are verified.
 
-11. **Skia / GPU readback checks** (run when PR touches `@shopify/react-native-skia`, `Canvas`, `useCanvasRef`, `makeImageFromView`, or image-capture hooks)
+12. **Skia / GPU readback checks** (run when PR touches `@shopify/react-native-skia`, `Canvas`, `useCanvasRef`, `makeImageFromView`, or image-capture hooks)
 
     **Scope trigger — grep the diff for any of:**
     `makeImageSnapshot`, `readPixels`, `makeImageFromView`, `useCanvasRef`, `CanvasRef`, `@shopify/react-native-skia`
@@ -1074,7 +1186,12 @@ Use this skill when:
 
 ## Architecture review checks (run when PR adds hooks, services, or screens)
 
-When a PR introduces new modules, hooks, services, or screens (or significantly restructures existing ones), evaluate architecture quality. Skip for trivial single-file changes.
+When a PR introduces new modules, hooks, services, or screens (or significantly restructures existing ones), evaluate architecture quality.
+
+**Do not skip for “trivial” 1-line / single-file diffs** when the hunk is a
+target-swap, dual upsert, dual client, or “X is not ready yet” workaround —
+run **Direction Alternative Gate** instead (`references/direction-alternative-gate.md`).
+Skip architecture *narrative* only for assets/locales/tests-only.
 
 1. **Composition & responsibility**
    - Each hook/module should have a single, clear responsibility.
@@ -1289,21 +1406,35 @@ Write findings in plain Korean, not terse English review jargon. Keep technical 
 Use this output order:
 1. `전체 요약`
 2. `좋은 점`
-3. `리뷰 코멘트`
-4. `구조·역할 관점` — **required** when flow ownership pass ran or screen/flow
+3. `문제 지도` — **required** on logic PRs when there is any comment-worthy
+   finding (🟠+ or actionable 🟡). Follow `references/problem-map-output.md`:
+   per-issue **어디** (`file:line` + short citation) · **뭐가 문제냐** · **언제
+   터지냐** · **유저/앱이 보는 것** · **최소 수정**; then **문제 아닌 것** table
+   and **우선순위 한 장**. If no findings: one line `문제 지도: 해당 없음`.
+   Do **not** duplicate the same detail in `리뷰 코멘트`.
+4. `리뷰 코멘트` — optional short bullets only when `문제 지도` does not cover
+   cross-cutting context; skip file-by-file re-listing already in `문제 지도`
+5. `방향 대안` — **required** on logic PRs (even 1-line). A/B/C table from
+   `references/direction-alternative-gate.md`. If recommending the PR as-is,
+   still name B and C and why they lose. Silence = PROCESS VIOLATION.
+6. `구조·역할 관점` — **required** when flow ownership pass ran or screen/flow
    scope triggered (even if no findings: state data owner + blast radius in 3–5
    lines). Include: data owner, upstream prepare vs target-owned fetch, RN
    `preload` applicability, requirement-change blast radius.
-5. `모션·애니메이션 관점` — **required** when motion craft pass ran (even if
+7. `모션·애니메이션 관점` — **required** when motion craft pass ran (even if
    motion Approve: 3–5 lines + motion verdict `Block`/`Approve`). Summarize top
    Before→After fixes from the motion table; note feel-check gaps (slow motion /
    real device) when code-only review.
-6. `파일별 리뷰 결과`
-7. `검증 결과`
+8. `파일별 리뷰 결과`
+9. `검증 결과`
 
 In `검증 결과`, include **all** of the following rows (silence = **PROCESS VIOLATION**):
 
 - **PR axis** row — `PR axis: A|B|C — <one-line reason>` (from **PR Axis Gate**). Silence = PROCESS VIOLATION.
+- **direction alternative** row — from **Direction Alternative Gate**:
+  `direction alternative: A=<…> | B=<…> | C=<…> — recommend <A|B|C> because <reason>`
+  or `direction alternative: skipped (not a logic PR)`. Silence on logic PRs =
+  PROCESS VIOLATION. Ensemble agreement on A does **not** replace this row.
 - **ensemble** row — list every pass by name with status:
 
 | Pass | Status examples |
@@ -1367,12 +1498,21 @@ Never report `skipped (unavailable)` because an MCP server named `fuck-u-code`
 is missing. MCP is not used for this preflight; if `command -v fuck-u-code`
 succeeds, run it or explicitly skip with a PR-scoped reason (e.g. assets-only).
 
-Never omit the **PR axis**, **ensemble**, **motion scope**, **review-animations**
+Never omit the **PR axis**, **direction alternative**, **ensemble**, **motion scope**, **review-animations**
 (when motion scope yes), **react-doctor**, **rnsec**, or **sonarlint** rows.
 A final review without them is incomplete even when findings look thorough.
 
+**Navigation PR rows** (when nav scope — silence = PROCESS VIOLATION):
+
+- **caller context** — `caller context: <symbol> → <callers> | table: filled | path-split: yes|no` or `navigation gate: skipped (not a navigation PR)`
+- **path tags** — `path tags: <tags> | none`
+- **scenario matrix** — `scenario matrix: filled | rows=N | 🟠 backed rows=M` or `scenario matrix: skipped`
+- **author observation** — `author observation reconciled: <withdrawn/kept per path>` or `none`
+- **echo dedup** — `echo dedup: <finding> promoted|demoted (N-agent echo)` or `none`
+
 For each finding, use these sections:
 - 위치
+- **Applicable paths** (path tag + caller — **required** on navigation findings)
 - 조건
 - 문제
 - 영향
@@ -1384,10 +1524,19 @@ Do not provide only an English-style table. The final synthesis must be understa
 
 - **Do not post PR/host comments by default** — see **Platform posting (SSOT)**. Chat (or requested surface) only unless the user explicitly asks to post.
 - Do not flood with style-only comments.
-- Do not suggest large refactors unless required for safety.
-- Prefer minimal patches over architectural rewrites.
+- Do not suggest large refactors **as merge blockers** unless required for safety.
+- **Do** name a smaller alternative that reorders init or **deletes a dual path**,
+  even on 1-line PRs — see Direction Alternative Gate. That is 🛠️ / ⚪, not
+  “out of scope because the hunk is small”.
+- Prefer minimal patches over architectural rewrites **for the mergeable fix**;
+  still write B/C so the author can choose the follow-up.
 - If uncertain, state assumption explicitly.
 - Every Medium/High issue must have a reproducible condition.
+- **Author/reviewer runtime observations** in-thread are competing evidence.
+  Reconcile immediately: withdraw or downrank findings for the confirmed path;
+  do not refute from theory alone (`references/navigation-review-gate.md`).
+- **Ensemble agreement ≠ evidence** for navigation/stack claims. Require caller
+  table + scenario row or author/device verification before 🟠+.
 
 ## Quick heuristics
 
@@ -1395,6 +1544,15 @@ Do not provide only an English-style table. The final synthesis must be understa
 - If override is partial, decide: reject, complete with default, or hide coherently.
 - If fallback source changes by branch, verify all branches preserve invariants.
 - If async sets loading true, verify all exits set it false.
+- If effect starts `void …Async()` after `visible`/`enabled` flips, verify
+  **generation token** (not boolean cancel reset) before setState/navigation/
+  animation — see `references/async-effect-cancellation.md`.
+- If the fix only retargets a call (`CLIENTS.A`→`B`, mock→real), grep whether
+  the sibling path still has production callers and write B=reorder / C=delete
+  before Approve — see `references/direction-alternative-gate.md`.
+- If navigation changes: grep **callers per symbol**, split findings by **path
+  tag**, compare **terminal** `push`/`replace` only on the **same target** —
+  not hop `navigate` vs terminal `push` (`references/navigation-review-gate.md`).
 - If Skia `readPixels` or `makeImageSnapshot` appears inside rAF/effect/poll loop on a GPU `<Canvas ref>`, treat as 🟠 until refactored to 1× CPU bake or proven 1× offscreen snapshot — do not wait for Datadog.
 
 ## Example finding (reference style)

@@ -190,3 +190,9 @@ Route to **Ponytail simplicity** subagent (do not duplicate as Major):
 
 Ponytail pass owns **line-count and duplication**; this pass owns **role and
 future change location**.
+
+## Handoff to navigation gate
+
+When findings involve **back stack**, `push`/`replace`, or `resetTargetStack`,
+split by **caller + path tag** per `references/navigation-review-gate.md` —
+do not promote whole-PR stack regressions from flow ownership alone.
