@@ -1,6 +1,6 @@
 # Logic Checks (Mandatory)
 
-Run all 6 checks on every review. No skipping.
+Run all checks on every review. Section 6 includes async cancellation (6a).
 
 ## 1. Invariant Checks
 
@@ -79,3 +79,13 @@ Key patterns to check:
 - **Cleanup on unmount**: does cancellation/abort happen if the component unmounts mid-request?
 
 **Check**: draw the state machine for open/close/reset/submit/error. Are there unreachable "stuck" states?
+
+### 6a. Async effect cancellation (generation vs boolean)
+
+When an effect starts async work (`void fooAsync()`, `await` after `visible` flip):
+
+- **Boolean trap:** `cancelledRef.current = false` on each effect run lets a **prior** async complete after `visible: true → false → true` because the new run clears the flag.
+- **Prefer:** monotonic **generation id** per run; increment in cleanup; compare before setState/navigation/animation.
+- **Do not** recommend arbitrary `setTimeout` keyboard races when `KeyboardController.dismiss()` + input blur fix exist.
+
+Full rubric: `references/async-effect-cancellation.md`.

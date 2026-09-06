@@ -239,6 +239,46 @@ const isOnline = useSyncExternalStore(
 
 ---
 
+## 10. Async Effect Cancellation (generation token)
+
+**Problem:** Boolean `cancelled` / `cancelledRef` reset at effect entry cannot
+invalidate a **previous** async when the effect re-runs before the first `await`
+finishes (e.g. modal `visible: true → false → true`).
+
+```ts
+// 🔴 Bad — stale async wins after re-open
+useBankXEffect(() => {
+  cancelledRef.current = false
+  const run = async () => {
+    await dismissKeyboardAsync()
+    if (cancelledRef.current) return
+    startFadeIn()
+  }
+  void run()
+  return () => { cancelledRef.current = true }
+}, [visible])
+
+// ✅ Good — generation token (no let)
+const generationRef = useRef(0)
+useBankXEffect(() => {
+  const generation = generationRef.current + 1
+  generationRef.current = generation
+  const run = async () => {
+    await dismissKeyboardAsync()
+    if (generationRef.current !== generation) return
+    startFadeIn()
+  }
+  void run()
+  return () => { generationRef.current += 1 }
+}, [visible])
+```
+
+**Principle:** Capture a per-run id; cleanup bumps the global counter. For
+fetch, also consider `AbortController`. See
+`references/async-effect-cancellation.md`.
+
+---
+
 ## Review Severity Guide
 
 | Pattern | Severity | Rationale |
@@ -250,3 +290,5 @@ const isOnline = useSyncExternalStore(
 | Notify parent via Effect | 🛠️ 🟡 Minor | Extra render pass, timing issues |
 | External store via Effect | 🛠️ 🔵 Trivial | Works but a better API exists |
 | Expensive calc without useMemo | 🛠️ 🔵 Trivial | Performance concern, usually below practical threshold |
+| Boolean async cancel reset on effect re-run | ⚠️ 🟠 Major when modal/navigation can re-open quickly; 🟡 otherwise | Stale async can run after `visible` toggle — use generation token |
+| Missing async effect cancel guard | ⚠️ 🟠 Major | setState/navigation after unmount or stale props |

@@ -11,12 +11,20 @@
 Every review must follow this order. Do not skip sections.
 
 ```
-## High-Level Summary
-## ✅ What's good
-## ⚠️ Findings
-## Case Matrix        ← only when fallback/merge logic exists
-## 🎯 Verdict
+## 전체 요약 / High-Level Summary
+## 좋은 점 / What's good
+## 문제 지도          ← REQUIRED on logic PRs with findings — see problem-map-output.md
+## 리뷰 코멘트        ← optional; do not duplicate 문제 지도
+## 방향 대안          ← required on logic PRs (even 1-line): A / B=reorder / C=delete path
+## 구조·역할 관점     ← when screen/flow scope
+## 모션·애니메이션 관점 ← when motion scope
+## 파일별 리뷰 결과
+## 검증 결과
+## Case Matrix        ← only when fallback/merge logic exists (may live inside 문제 지도)
+## 🎯 Verdict         ← may be merged into 전체 요약 + 우선순위 한 장
 ```
+
+**문제 지도 SSOT:** `references/problem-map-output.md`
 
 ---
 
@@ -53,11 +61,12 @@ Bad (too generic, avoid):
 Group findings **by file**. Within each file, order by severity: 🔴 Critical → 🟠 Major → 🟡 Minor → 🔵 Trivial.
 Max 5 findings total unless critical issues exist.
 
-**Each finding must include all 5 fields:**
+**Each finding must include all 5 fields** (navigation findings add **Applicable paths**):
 
 ```
 ### [type-icon] [severity-icon] Title
 
+**Applicable paths:** `<path-tag>` + caller — required for navigation/back-stack findings
 **Condition:** <exact input/state combination that triggers this>
 **Impact:** <user/business/technical consequence>
 **Evidence:** `<file>:<line>` — short snippet
