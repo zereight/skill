@@ -3,7 +3,7 @@
 code review skill focused on **logic correctness and edge cases**.
 Prioritizes correctness and risk over style nitpicks.
 
-**Mandatory pipeline:** multi-skill review ensemble (9 subagent passes) + react-doctor preflight (React/RN logic PRs) + **sonarlint-ls-cli** preflight (local, no auth — diff-scoped) + rnsec + fuck-u-code preflight. React Native PRs also require the `zereight-react-native-optimizer` ensemble pass. Screen/flow PRs require **flow ownership** + **ponytail** ensemble passes.
+**Mandatory pipeline:** multi-skill review ensemble (11 subagent passes) + react-doctor preflight (React/RN logic PRs) + **sonarlint-ls-cli** preflight (local, no auth — diff-scoped) + rnsec + fuck-u-code preflight. React Native PRs also require the `zereight-react-native-optimizer` ensemble pass. Screen/flow PRs require **flow ownership** + **ponytail** ensemble passes.
 
 ## Install
 
@@ -38,11 +38,12 @@ npx skills add zereight/skill --yes --global
 | React Effects | Derived state, event logic in Effect, Effect chains, fetch without cleanup |
 | React Doctor | **Mandatory** for React/RN logic PRs — `npx react-doctor@latest --json --no-score -y --diff <base>`; row required in `검증 결과` |
 | SonarLint (local) | **Mandatory** when `python3` + `curl` + `git` available — `sonarlint-ls-cli` (`scan.sh analyze`) on PR changed `.ts/.tsx/.js/.jsx/.py/.java` files only. Fully local, no auth/token/project key, no SonarCloud round-trip. Kotlin/Swift/Objective-C have no bundled analyzer (silent zero findings) — reviewed manually instead, noted in `검증 결과`. |
-| Review ensemble | **Mandatory** — 9 subagent passes before synthesis; `검증 결과` lists each pass status |
+| Review ensemble | **Mandatory** — 11 subagent passes before synthesis; `검증 결과` lists each pass status |
 | Flow ownership | Screen role, data owner, upstream prepare vs `navigation.preload`, requirement-change blast radius (`references/flow-ownership-review.md`) |
 | Ponytail simplicity | Over-engineering, duplication, yagni (`ponytail-review` — correctness out of scope) |
 | Direction alternative | 1-line target-swap in scope: PR as written vs reorder vs delete unused path (`references/direction-alternative-gate.md`). Existing PR comments = competing hypotheses. |
 | Navigation & caller context | Per-caller grep, hop vs terminal nav diff, path tags, scenario matrix before 🟠 stack claims (`references/navigation-review-gate.md`) |
+| Test quality | Changed test code: necessity (one invariant per test), duplication/placement, slop, axis-linked gaps (`references/test-review-gate.md`) |
 
 ## References
 
@@ -57,6 +58,7 @@ npx skills add zereight/skill --yes --global
 | `references/flow-ownership-review.md` | Screen role, data owner, preload vs upstream prepare |
 | `references/direction-alternative-gate.md` | Symptom-fix vs reorder vs delete-a-path (1-line PRs in scope) |
 | `references/navigation-review-gate.md` | Caller context, hop vs terminal nav, path tags, scenario matrix, author observation |
+| `references/test-review-gate.md` | Test necessity, duplication/placement, slop, axis-linked gaps; RNTL lens |
 | `references/async-effect-cancellation.md` | Generation token vs boolean cancel in async effects |
 
 ## Output format
@@ -65,9 +67,9 @@ npx skills add zereight/skill --yes --global
 2. `좋은 점`
 3. `리뷰 코멘트`
 4. `방향 대안` — A/B/C table on logic PRs (`references/direction-alternative-gate.md`)
-5. `구조·역할 관점` / `모션·애니메이션 관점` when those passes ran
+5. `구조·역할 관점` / `모션·애니메이션 관점` / `테스트 관점` when those passes ran
 6. `파일별 리뷰 결과`
-7. `검증 결과` — **PR axis**, **direction alternative**, **ensemble**, **caller context** / **path tags** / **scenario matrix** (nav PRs), **react-doctor**, **sonarlint (local CLI)**, **rnsec**, **fuck-u-code**, **thermo-nuclear** rows (all mandatory when in scope)
+7. `검증 결과` — **PR axis**, **direction alternative**, **ensemble**, **caller context** / **path tags** / **scenario matrix** (nav PRs), **test scope** / **test review** (test PRs), **react-doctor**, **sonarlint (local CLI)**, **rnsec**, **fuck-u-code**, **thermo-nuclear** rows (all mandatory when in scope)
 
 ### Severity icons
 

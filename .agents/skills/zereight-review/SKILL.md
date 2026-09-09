@@ -1,6 +1,6 @@
 ---
 name: zereight-review
-description: Comprehensive code review skill for practical PR feedback. Use for feature, bugfix, and refactor reviews. Prioritizes correctness, edge cases, dual-path symptom fixes vs delete-a-path alternatives, logic invariants, async state, flow ownership, ponytail simplicity, motion craft, OWASP, and actionable feedback.
+description: Comprehensive code review skill for practical PR feedback. Use for feature, bugfix, and refactor reviews. Prioritizes correctness, edge cases, dual-path symptom fixes vs delete-a-path alternatives, logic invariants, async state, flow ownership, ponytail simplicity, motion craft, test quality, OWASP, and actionable feedback.
 ---
 
 # zereight-review
@@ -38,6 +38,7 @@ Required instruction sources to load before reviewing:
 - `references/async-effect-cancellation.md` (this skill — generation token vs boolean for async effect cleanup)
 - `references/direction-alternative-gate.md` (this skill — symptom-fix vs reorder vs delete-a-path; 1-line PRs in scope)
 - `references/navigation-review-gate.md` (this skill — caller context, hop vs terminal nav diff, path tags, scenario matrix, author observation, echo dedup)
+- `references/test-review-gate.md` (this skill — test necessity, duplication/placement, slop, axis-linked gaps; RNTL lens when RN component tests)
 - `references/problem-map-output.md` (this skill — **문제 지도** final-output template: 어디/뭐/언제/유저영향/우선순위)
 
 Required subagent review passes:
@@ -52,7 +53,8 @@ Required subagent review passes:
 | Flow ownership & screen-role reviewer | `reviewer` | session (`inherit`) | `references/flow-ownership-review.md` + repo data layering (`CLAUDE.md`) | data owner vs orchestration owner; upstream prepare vs target-owned fetch; `navigation.preload`; nav-param growth; requirement-change blast radius; loading UI on async gap |
 | Ponytail simplicity reviewer | `reviewer` | session (`inherit`) | `ponytail-review` + `references/direction-alternative-gate.md` | yagni, duplicate orchestration, dual hook paths, shrink/delete, **sibling-path grep on target-swap** — **correctness/security out of scope** |
 | Motion craft reviewer | `reviewer` | session (`inherit`) | `review-animations` + `STANDARDS.md` | motion-only hunks; Ten Non-Negotiable Standards; Before/After/Why table + Block/Approve verdict; RN map transform/opacity=spring interruptibility=GPU; **not** general logic |
-| Agent orchestration reviewer | `delegate` | session (`inherit`) | `agent-skills:using-agent-skills` | whether the work was split correctly and whether any review lens is missing (thermo-nuclear, flow ownership, ponytail, motion craft, React/RN) |
+| Test quality reviewer | `worker` | session (`inherit`) | `references/test-review-gate.md` + consolidate-test-suites + testing-anti-patterns + test-writing (+ `zereight-react-native-testing` when RN component tests) | test-only hunks; necessity (one invariant per test), duplication/placement (one owning layer), slop (mock-behavior, prod pollution, overspec), axis-linked gaps; **never 🟠 for missing tests alone** |
+| Agent orchestration reviewer | `delegate` | session (`inherit`) | `agent-skills:using-agent-skills` | whether the work was split correctly and whether any review lens is missing (thermo-nuclear, flow ownership, ponytail, motion craft, React/RN, test quality) |
 | React/RN specialist reviewer | `reviewer` | session (`inherit`) | `zereight-react-native-optimizer` + react-doctor JSON + `references/navigation-review-gate.md` when nav scope | effect/render/list/animation/native perf regressions; **Skia GPU readback loops** (`makeImageSnapshot` + `readPixels` in rAF/effect); reconcile react-doctor diagnostics with diff evidence; nav findings split by caller/path |
 | Zereight coordinator | (parent) | session (parent) | this skill + `references/direction-alternative-gate.md` + `references/navigation-review-gate.md` when nav scope | three-dot diff, RED-team, verification, **A/B/C direction table**, caller/scenario gates, author observation reconcile, echo dedup, final synthesis |
 
@@ -101,6 +103,14 @@ perf, effect anti-patterns, and **Skia GPU readback**. Motion craft pass owns
 physicality, reduced-motion, cohesion) and outputs the skill's Block/Approve
 verdict. Overlap on scroll→setState: RN pass = perf/thread; motion pass =
 instant toggle vs fade, cohesion.
+
+**Test pass rule:** Spawn when the three-dot diff touches test files
+(`**/*.test.*`, `**/__tests__/**`, `**/__snapshots__/**`, test-dir
+helpers/fixtures). Mark `skipped (no test hunks)` otherwise — a logic PR
+with zero test changes does **not** spawn this pass; file coverage keeps a
+one-line "missing tests" note. Inject `references/test-review-gate.md`
+into the test prompt. Do not promote slop or gaps to 🟠+ without a proven
+user-facing defect in the production diff; missing tests alone never reach 🟠.
 
 ## Ensemble model policy — MANDATORY
 
@@ -225,9 +235,13 @@ Execution rules:
     {
       "agent": "reviewer",
       "task": "React/RN specialist review. Skill: zereight-react-native-optimizer. Include react-doctor JSON. Use parent session model. PR: ..."
+    },
+    {
+      "agent": "worker",
+      "task": "Test quality review. Read references/test-review-gate.md in zereight-review skill. Test hunks only: necessity, duplication/placement, slop, gaps. Use parent session model. PR: ..."
     }
   ],
-  "concurrency": 9
+  "concurrency": 10
 }
 ```
 
@@ -255,13 +269,13 @@ parent session**, not a hard-coded Composer slug.)
 ```
 
 Repeat for each ensemble pass (baseline, regression, file coverage, quality,
-thermo-nuclear, **flow ownership**, **ponytail**, **motion craft**, React/RN)
+thermo-nuclear, **flow ownership**, **ponytail**, **motion craft**, React/RN, **test quality**)
 with `model: "inherit"` on every `Task` call. Spawn orchestration `delegate`
 after worker/reviewer passes. Never skip the ensemble because `composer-2.5`
 is missing from the whitelist.
 
 **Final synthesis must list models used**, e.g.
-`reviewer ×7 (inherit / <parent>), worker ×2 (inherit / <parent>), delegate (inherit / <parent>)`.
+`reviewer ×7 (inherit / <parent>), worker ×3 (inherit / <parent>), delegate (inherit / <parent>)`.
 If any pass ran on a different model than the session without a same-turn user
 request, add `PROCESS VIOLATION: <pass> used <actual-model> (expected inherit/session)`.
 
@@ -280,12 +294,16 @@ single-pass review as an exception, not the default.
 6. **Motion scope gate** — grep diff for motion triggers (see **Motion craft pass
    rule**). Record in `검증 결과` as `motion scope: yes — <triggers>` or
    `motion scope: no`. No CLI; scope only decides whether to spawn motion pass.
-7. **Direction Alternative Gate** — load `references/direction-alternative-gate.md`.
+7. **Test scope gate** — grep diff for test files (`**/*.test.*`,
+   `**/__tests__/**`, `**/__snapshots__/**`; see **Test pass rule**). Record
+   in `검증 결과` as `test scope: yes — <files>` or `test scope: no`. No CLI;
+   scope only decides whether to spawn the test pass.
+8. **Direction Alternative Gate** — load `references/direction-alternative-gate.md`.
    On logic PRs, draft A (PR) / B (reorder) / C (delete a path) **before**
    trusting ensemble Approve. Grep sibling identifiers. Read existing PR
    comments as competing hypotheses, not as things to refute. Record the table
    in `검증 결과`. 1-line / single-file does **not** skip this gate.
-8. **Navigation & caller-context gates** (when nav scope — see
+9. **Navigation & caller-context gates** (when nav scope — see
    `references/navigation-review-gate.md`):
    - **Caller Context Gate** — grep production callers per changed nav symbol;
      fill caller table before any 🟠 navigation finding.
@@ -296,9 +314,9 @@ single-pass review as an exception, not the default.
      `post-fr-success`, …); record in `검증 결과`.
    - **Scenario Matrix Gate** — before 🟠 stack/back findings; UNVERIFIED → max 🟡.
    Skip only when zero navigation hunks; record `navigation gate: skipped`.
-9. Spawn all ensemble passes in parallel (or sequential if runtime limits concurrency)
-10. Spawn orchestration `delegate` pass after worker/reviewer passes complete
-11. Coordinator synthesis + `검증 결과` (re-check Axis Gate, Direction
+10. Spawn all ensemble passes in parallel (or sequential if runtime limits concurrency)
+11. Spawn orchestration `delegate` pass after worker/reviewer passes complete
+12. Coordinator synthesis + `검증 결과` (re-check Axis Gate, Direction
     Alternative Gate, **caller/scenario gates**, **author observations**,
     **echo dedup** before Approve; do not promote “all passes agree” without
     per-path evidence)
@@ -318,11 +336,13 @@ When single-pass fallback is active, still:
 - Load all reviewer instruction sources sequentially (including
   `thermo-nuclear-code-quality-review`, `references/flow-ownership-review.md`,
   `ponytail-review`, `review-animations` + `STANDARDS.md` when motion scope,
-  `zereight-react-native-optimizer` when React/RN scope, and
+  `zereight-react-native-optimizer` when React/RN scope,
+  `references/test-review-gate.md` when test scope, and
   `references/direction-alternative-gate.md` on logic PRs,
   `references/navigation-review-gate.md` when nav scope).
 - Cover every ensemble axis in one pass (including flow ownership, ponytail,
-  motion craft when in scope, and the Direction Alternative A/B/C table).
+  motion craft when in scope, test quality when in scope, and the Direction
+  Alternative A/B/C table).
 - Run react-doctor, rnsec, SonarLint, and fuck-u-code prefights when applicable.
 
 **If subagent spawning IS available:** spawn every required pass. Partial
@@ -454,6 +474,15 @@ Review preflight safeguards:
 - If the nearest repo `AGENTS.md` is missing, do not treat that as permission to
   ignore repo instructions. Use any AGENTS instructions supplied in the current
   conversation as the repo instruction source, state that fallback, and continue.
+- **MANDATORY: Run unnecessary-effect preflight for Effect PRs BEFORE ensemble
+  synthesis.** Detect scope: any added/touched `useEffect` / `useBankXEffect` /
+  `useBackgroundEffect` (or repo-equivalent wrappers) in `*.ts` / `*.tsx`,
+  excluding `**/*.test.*`, `**/__snapshots__/**`, `**/locales/**`,
+  `**/*.stories.*`. Follow `references/unnecessary-effect-preflight.md`
+  (mapped harness run + fix / keep+justify / block triage). Unjustified keeps
+  block the lint-introduction PR. Feed counts into the React/RN ensemble pass
+  prompt. Silence without a `검증 결과` row = **PROCESS VIOLATION** (same
+  discipline as react-doctor silence).
 - **MANDATORY: Run react-doctor for React/RN PRs BEFORE ensemble synthesis.**
   Detect React/RN scope: any changed `*.ts` / `*.tsx` outside `**/*.test.*`,
   `**/__snapshots__/**`, `**/locales/**` only.
@@ -1284,6 +1313,28 @@ and `STANDARDS.md` in full and follow that skill's **Required Output Format**
 **Single-pass fallback:** Coordinator loads `review-animations` + `STANDARDS.md`
 and applies the Ten Standards to motion hunks when scope triggers.
 
+## Test quality review (mandatory ensemble pass when in scope)
+
+Spawn the **Test quality reviewer** when **Test pass rule** triggers.
+The subagent must load `references/test-review-gate.md` in full and apply
+its four axes (necessity, duplication/placement, slop, axis-linked gaps),
+plus the RNTL lens when the diff has RN component tests.
+
+**Coordinator merge rules:**
+
+- Test findings default to 🔵 Trivial / 🟡 Minor / 🛠️ refactor. Never
+  promote slop or gaps to 🟠 without a proven user-facing defect in the
+  production diff; missing tests alone never reach 🟠.
+- Test-only production pollution (test-only methods, behavior-changing
+  test hooks) → 🟡 minimum; 🟠 only with proven production-call risk.
+- **File coverage pass** owns one-line "missing tests" on no-test-hunk PRs —
+  when the test pass ran, it owns gaps; file coverage cross-references.
+- **Quality gate pass** defers its "test quality" note to this pass when
+  spawned — do not duplicate.
+
+**Single-pass fallback:** Coordinator loads `references/test-review-gate.md`
+and applies the four axes to test hunks when scope triggers.
+
 ## Security checks — OWASP-based (always run)
 
 Apply to every PR. Weight higher for payment, authentication, data storage, and API integration changes.
@@ -1349,7 +1400,7 @@ Key areas:
 - **Naming**: intention-revealing, consistent vocabulary, no misleading names
 - **Functions**: single responsibility, no flag arguments, no side effects in getters
 - **React/TS**: prop explosion, render-in-render, `any` usage, hook naming, effect scope
-- **React Effect anti-patterns**: derived state via Effect, event logic in Effect, Effect chains, fetch without cleanup — see `references/react-effect-guidelines.md`
+- **React Effect anti-patterns**: derived state via Effect, event logic in Effect, Effect chains, fetch without cleanup — see `references/react-effect-guidelines.md`. Wrapper hooks (`useBankXEffect`, `useBackgroundEffect`) count as Effects; run the `references/unnecessary-effect-preflight.md` gate on Effect PRs and lint-introduction PRs.
 - **React Native**: StyleSheet outside component, inline styles in hot paths, raw primitives instead of design system components
 - **React Doctor**: **mandatory** preflight for React/RN logic PRs — see preflight safeguards; findings feed the React/RN ensemble pass
 - **React Native performance**: **mandatory** React/RN ensemble pass via `zereight-react-native-optimizer` (not optional alongside review)
@@ -1425,8 +1476,11 @@ Use this output order:
    motion Approve: 3–5 lines + motion verdict `Block`/`Approve`). Summarize top
    Before→After fixes from the motion table; note feel-check gaps (slow motion /
    real device) when code-only review.
-8. `파일별 리뷰 결과`
-9. `검증 결과`
+8. `테스트 관점` — **required** when test pass ran (even if clean: 3–5 lines +
+   per-axis verdict `necessity/duplication/slop/gaps`). List UNNAMABLE tests,
+   merged duplicates, top gaps; note RNTL lens `applied (v13|v14)` / `n/a`.
+9. `파일별 리뷰 결과`
+10. `검증 결과`
 
 In `검증 결과`, include **all** of the following rows (silence = **PROCESS VIOLATION**):
 
@@ -1447,6 +1501,7 @@ In `검증 결과`, include **all** of the following rows (silence = **PROCESS V
 | Flow ownership & screen-role reviewer | `completed` / `skipped (not a screen/flow PR)` / `skipped (429)` |
 | Ponytail simplicity reviewer | `completed` / `skipped (not logic PR)` / `skipped (429)` |
 | Motion craft reviewer | `completed` / `skipped (not a motion PR)` / `skipped (429)` |
+| Test quality reviewer | `completed` / `skipped (no test hunks)` / `skipped (429)` |
 | React/RN specialist reviewer | `completed` / `skipped (not React/RN logic PR)` / `skipped (429)` |
 | Agent orchestration reviewer | `completed` / `skipped (429)` |
 | Whole ensemble | `ensemble completed (N/M passes)` / `ensemble skipped (user-approved single-pass fallback)` / `ensemble blocked (runtime unavailable)` |
@@ -1459,6 +1514,15 @@ In `검증 결과`, include **all** of the following rows (silence = **PROCESS V
 | Ran | `review-animations pass completed` + motion verdict `Block` or `Approve` |
 | Skipped — no scope | `review-animations skipped (not a motion PR)` |
 | Skipped — failure | `review-animations pass skipped (429 — <reason>)` or covered in single-pass fallback |
+
+- **test scope** row — `test scope: yes — <files>` / `test scope: no` (from step 7 Test scope gate). Silence on PRs with test hunks = **PROCESS VIOLATION**.
+- **test review** row:
+
+| Result | Wording |
+| --- | --- |
+| Ran | `test review pass completed` + per-axis verdict `necessity/duplication/slop/gaps` |
+| Skipped — no scope | `test review skipped (no test hunks)` |
+| Skipped — failure | `test review pass skipped (429 — <reason>)` or covered in single-pass fallback |
 
 - **thermo-nuclear** row: `thermo-nuclear pass completed` / `thermo-nuclear pass skipped (subagent blocked)` / `thermo-nuclear covered in single-pass fallback`
 - **react-doctor** row:
@@ -1498,8 +1562,17 @@ Never report `skipped (unavailable)` because an MCP server named `fuck-u-code`
 is missing. MCP is not used for this preflight; if `command -v fuck-u-code`
 succeeds, run it or explicitly skip with a PR-scoped reason (e.g. assets-only).
 
+- **ymnne** row (Effect PRs — silence = PROCESS VIOLATION):
+
+| Result | Wording |
+| --- | --- |
+| Ran | `ymnne preflight run` + `fixes=N keeps=M blocks=K` |
+| Skipped — no scope | `ymnne preflight skipped (no Effect hunks)` |
+| Skipped — failure | `ymnne preflight skipped (<reason>)` + exact command + error excerpt |
+
 Never omit the **PR axis**, **direction alternative**, **ensemble**, **motion scope**, **review-animations**
-(when motion scope yes), **react-doctor**, **rnsec**, or **sonarlint** rows.
+(when motion scope yes), **test scope**, **test review** (when test scope yes),
+**ymnne** (when Effect scope yes), **react-doctor**, **rnsec**, or **sonarlint** rows.
 A final review without them is incomplete even when findings look thorough.
 
 **Navigation PR rows** (when nav scope — silence = PROCESS VIOLATION):
@@ -1554,6 +1627,7 @@ Do not provide only an English-style table. The final synthesis must be understa
   tag**, compare **terminal** `push`/`replace` only on the **same target** —
   not hop `navigate` vs terminal `push` (`references/navigation-review-gate.md`).
 - If Skia `readPixels` or `makeImageSnapshot` appears inside rAF/effect/poll loop on a GPU `<Canvas ref>`, treat as 🟠 until refactored to 1× CPU bake or proven 1× offscreen snapshot — do not wait for Datadog.
+- If the diff adds or changes tests: demand one invariant per test; UNNAMABLE → delete candidate; missing tests alone never reach 🟠 — see `references/test-review-gate.md`.
 
 ## Example finding (reference style)
 
