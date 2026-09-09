@@ -5,6 +5,13 @@ Reference: [You Might Not Need an Effect](https://react.dev/learn/you-might-not-
 **Core rule:** Effects are for synchronizing with *external systems* (network, browser DOM, third-party libraries).
 If there is no external system involved, you probably don't need an Effect.
 
+**Wrapper rule:** every pattern below applies equally to Effect wrappers
+(`useBankXEffect`, `useBackgroundEffect`, `useBankXFocusEffect`). Review the
+wrapper call, not just bare `useEffect` — `eslint-plugin-react-you-might-not-need-an-effect`
+sees only `useEffect` and has no custom-hook option, so a naive plugin run
+reports ~zero findings on wrapper-heavy codebases. See
+`references/unnecessary-effect-preflight.md` for the mapped-harness procedure.
+
 Report violations as 🛠️ 🟡 Minor (causes extra renders) or 🛠️ 🔵 Trivial (style only).
 If the violation causes a bug (stale data, wrong event trigger), escalate to ⚠️ 🟠 Major.
 
