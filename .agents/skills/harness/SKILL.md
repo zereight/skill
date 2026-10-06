@@ -1,4 +1,5 @@
 ---
+
 name: harness
 description: >
   Pi-native evaluate→improve→persist harness. Provides a systematic loop for
@@ -6,6 +7,7 @@ description: >
   as playbooks. Use for iterative output improvement, not for one-off edits
   (use continuity) or single PR review (use zereight-review).
 argument-hint: "[solve|knowledge|status]"
+disable-model-invocation: true
 ---
 
 # harness (Pi-native evaluation loop)

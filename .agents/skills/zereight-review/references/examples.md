@@ -1,6 +1,8 @@
 # Review Examples
 
-Real-world finding examples in zereight-review output format.
+Finding-field examples. Chat wrapping (action first, max 5, `Next:`) is
+`references/output-format.md`. Do not paste these full English section dumps
+as the user-facing reply.
 
 ---
 

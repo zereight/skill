@@ -1,8 +1,10 @@
 ---
+
 name: morning-recap
 description: Summarize PRs merged in a GitHub repo over the last N hours (default 12), excluding ones you authored or have already touched, and rank what's worth reviewing. Use when user says "morning recap", "what did I miss", "what shipped overnight", or "what went on while I was sleeping".
 argument-hint: [hours]
 user_invocable: true
+disable-model-invocation: true
 ---
 
 # morning-recap

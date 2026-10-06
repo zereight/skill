@@ -1,0 +1,4 @@
+target/
+chrome-profile/
+.DS_Store
+*.log

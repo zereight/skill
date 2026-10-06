@@ -1,8 +1,10 @@
 ---
+
 name: study-repo
 description: Clone a GitHub repo and set up an interactive study session for reading and analyzing the codebase. Use when user says "study repo", "learn this repo", "analyze this codebase", or provides a GitHub URL they want to explore.
 argument-hint: <github-url-or-owner/repo> [subpath]
 user_invocable: true
+disable-model-invocation: true
 ---
 
 # study-repo

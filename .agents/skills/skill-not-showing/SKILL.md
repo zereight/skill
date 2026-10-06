@@ -1,7 +1,9 @@
 ---
+
 name: skill-not-showing
 description: Diagnose why a skill is missing from Pi /skill, T3 Code $ picker, or Cursor lists. Use when a skill exists on disk but does not appear, Pi shows only project or extension skills, or after adding a repo skill under .agents/skills/.
 user_invocable: true
+disable-model-invocation: true
 ---
 
 # Skill Not Showing

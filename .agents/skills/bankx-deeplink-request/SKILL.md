@@ -1,6 +1,8 @@
 ---
+
 name: bankx-deeplink-request
 description: Create and maintain BankX deep link request tickets from PRDs, specs, notification requirements, or screen requests. Use when the user asks to request BankX deeplinks, create MAR Jira tickets, extract deeplink needs from PRDs/docx files, follow the "How to request deep link" Confluence workflow, or update deep link request issues on bankx.atlassian.net.
+disable-model-invocation: true
 ---
 
 # BankX Deep Link Request

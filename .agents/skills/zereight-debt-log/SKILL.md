@@ -1,4 +1,5 @@
 ---
+
 name: zereight-debt-log
 description: >-
   Log an ambiguous or uncertain finding from a code review into a running
@@ -9,6 +10,7 @@ description: >-
   Companion to zereight-review. Not for full-repo debt sweeps (see the
   jjw013/tech-debt-skill audit) and not for ponytail's own deliberate-shortcut
   markers (see ponytail-debt).
+disable-model-invocation: true
 ---
 
 # zereight-debt-log
@@ -51,7 +53,7 @@ it's handed.
 
 ## Ledger
 
-Default location: `<repo-root>/TECH_DEBT.md`. Create it with the header
+Default location: `~/.agents/TECH_DEBT.md`. Create it with the header
 below on first write; append below that on every subsequent write. Never
 rewrite existing entries except to change `status`.
 
@@ -62,11 +64,24 @@ rewrite existing entries except to change `status`.
 | --- | --- | --- | --- | --- | --- |
 ```
 
-Entry format — one row per item, IDs sequential `DEBT-001`, `DEBT-002`, ...
-(scan existing rows for the highest ID before assigning the next one; never
-reuse or renumber):
+Entry format — one row per item. IDs are namespaced, never global-sequential:
 
-`| DEBT-NNN | <ISO date> | <file>:<line> or (repo-wide) | <one-line what/where> | <one-line why you didn't block on it> | open |`
+`| DEBT-<provider>-<session>-<NN> | <ISO date> | <file>:<line> or (repo-wide) | <one-line what/where> | <one-line why you didn't block on it> | open |`
+
+ID parts (all lowercase, no spaces):
+- `<provider>` — your runtime slug: `muse` (Muse Code), `codex` (Codex CLI),
+  `cursor` (Cursor), `pi` (Pi agent). If your runtime isn't listed and you
+  can't identify it, use `local`.
+- `<session>` — your current session name (e.g. `crystal-horologium`) from
+  the session-identity context. If no session name is available, use the
+  last 8 hex chars of the session UUID.
+- `<NN>` — your own per-session index starting at `01`. Scope it to your
+  prefix only: grep the ledger for `DEBT-<provider>-<session>-` and take
+  max+1. Never reuse or renumber — one exception: your own rows under
+  Concurrency repair.
+
+Example: `DEBT-muse-crystal-horologium-01`. Legacy `DEBT-NNN` rows stay
+as-is; they are another writer's history, not yours to migrate.
 
 Keep the "why ambiguous" cell honest — this is what separates it from a
 plain TODO. "Might be intentional, couldn't confirm with author" is a good
@@ -76,25 +91,53 @@ say so to the user and let them decide whether it belongs here at all.
 ## Workflow
 
 **Log** (default action):
-1. Confirm the ledger path — `TECH_DEBT.md` at repo root unless the user
+1. Confirm the ledger path — `~/.agents/TECH_DEBT.md` unless the user
    names another file.
-2. Read the file if it exists; find the highest existing `DEBT-` ID.
-3. Append one row per item. Multiple items in one turn → multiple rows, not
+2. Build your prefix `DEBT-<provider>-<session>-` from your runtime and
+   session identity (see Ledger). This prefix is yours alone — no other
+   agent shares it.
+3. Read the file if it exists; grep only your prefix and take max+1 as
+   the next `<NN>`. Ignore legacy `DEBT-NNN` rows and other agents'
+   prefixes entirely.
+4. Append one row per item. Multiple items in one turn → multiple rows, not
    one merged row.
-4. Confirm to the user: `Logged DEBT-NNN. Not blocking the review on this.`
+5. Confirm to the user: `Logged DEBT-<provider>-<session>-<NN>. Not blocking the review on this.`
 
 **List** (`부채 목록`, `list debt`, `뭐 남겨놨어`):
 Read the ledger, print open rows grouped loosely by area if there are many.
 Don't re-triage them — just surface what's there.
 
-**Resolve** (`이거 해결됨`, `DEBT-003 처리함`):
-Flip `status` to `resolved` on that row. Don't delete rows — the ledger is a
+**Resolve** (`이거 해결됨`, `DEBT-...-03 처리함`):
+Flip `status` to `resolved` on the exact-ID row. Don't delete rows — the ledger is a
 history, not a todo list that empties out.
 
 **Promote to ticket** — only on explicit request. This skill does not push
 to Jira/GitHub/Linear on its own. If asked, hand the row's content to
 whatever ticketing skill is already in play (e.g. `bankx-jira` in this repo)
 and let that skill own the actual API call and consent gate.
+
+## Concurrency (multi-agent appends)
+
+Multiple agents can write the ledger at the same time. Namespaced IDs make
+collisions structurally impossible: two agents never share a
+`DEBT-<provider>-<session>-` prefix, so each agent's `<NN>` sequence is
+independent. There is no global highest-ID to race on — do not scan for one.
+
+**Before every append (mandatory):**
+1. Re-read the ledger immediately before writing — even if you already read
+   it earlier in the turn. Only the pre-write read counts.
+2. Recompute max+1 from your own prefix only. If your prefix already has
+   the `<NN>` you planned (e.g. you wrote earlier in this session), bump
+   past it — never reuse.
+
+**Legacy collisions (duplicate `DEBT-NNN` rows from the old sequential scheme):**
+- Renumber only rows **you wrote yourself in the current turn**, moving
+  them to your namespaced prefix. This is the sole exception to "never
+  renumber".
+- Never renumber rows written by another agent — report those duplicates
+  to the user and let them decide.
+- After your fix, verify with a fresh read that no duplicate of your IDs
+  remains.
 
 ## Boundaries
 
@@ -111,6 +154,7 @@ and let that skill own the actual API call and consent gate.
 ## Verification
 
 - [ ] Ledger file exists at the confirmed path with the header row.
-- [ ] New rows have sequential, non-reused `DEBT-` IDs.
+- [ ] New IDs use your `DEBT-<provider>-<session>-<NN>` prefix with `<NN>`
+  = max+1 over your prefix only; no duplicate of any existing row.
 - [ ] Each row's "why ambiguous" cell states an actual reason, not "TODO".
 - [ ] User was told the ID(s) just written and that the item is not blocking.

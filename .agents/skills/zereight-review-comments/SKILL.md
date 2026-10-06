@@ -1,10 +1,12 @@
 ---
+
 name: zereight-review-comments
 description: >-
   Post zereight-review findings as Bitbucket inline PR comments (simple English
   body + ASCII diagrams + short Korean summary at end, code fixes). Use after
   zereight-review when the user asks to post review comments, inline comments,
   "댓글 달아", or /zereight-review-comments.
+disable-model-invocation: true
 ---
 
 # zereight-review-comments
@@ -22,6 +24,7 @@ explicitly asks to post on the host.
 first. This skill handles **format, anchoring, and posting** — not re-inventing findings.
 
 **Chat with the user in Korean** unless they write in English.
+next action first, numbered list, one closer. That shape is **chat only**.
 
 **Posted PR comments:** English body + ASCII art. **One short Korean summary at the very end only.**
 
@@ -252,8 +255,6 @@ After posting:
 
 | Skill | Role |
 | --- | --- |
-| `zereight-review` | Findings + chat synthesis; **does not post** by default |
-| `zereight-review-comments` | Post findings to Bitbucket inline (this skill) |
 | `zereight-mode` | BankX conventions for fix snippets |
 | `bankx-jira` | Jira scope only; not for PR comment posting |
 

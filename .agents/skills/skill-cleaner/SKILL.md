@@ -1,7 +1,9 @@
 ---
+
 name: skill-cleaner
 description: Audit agent skills — token cost, duplicates, outdated plugin versions, unused skills, and overly long descriptions. Use when trimming skill prompt budget, finding duplicate or unused skills, auditing plugin versions, or deciding which skills to remove.
 user_invocable: true
+disable-model-invocation: true
 ---
 
 # Skill Cleaner

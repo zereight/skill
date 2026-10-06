@@ -14,7 +14,6 @@ npx skills add zereight/skill --yes --global
 ## Delivery default (SSOT)
 
 - **Chat-only by default** — synthesize the review in the session; do **not** post PR comments on Bitbucket/GitHub/GitLab unless the user explicitly asks (`댓글 달아`, `post the review`, etc.).
-- When posting is requested, follow **`zereight-review-comments`** (`~/.agents/skills/zereight-review-comments/`).
 - `comment-worthy` / `no comment` = per-file **finding** labels, not “post / don’t post on the PR”.
 
 ## When to use
@@ -63,13 +62,15 @@ npx skills add zereight/skill --yes --global
 
 ## Output format
 
-1. `전체 요약`
-2. `좋은 점`
-3. `리뷰 코멘트`
-4. `방향 대안` — A/B/C table on logic PRs (`references/direction-alternative-gate.md`)
-5. `구조·역할 관점` / `모션·애니메이션 관점` / `테스트 관점` when those passes ran
-6. `파일별 리뷰 결과`
+
+1. Line 1 = next action (`file:line` + verb, or `머지 가능`)
+2. Line 2 = 한 줄 판정 + 시간 추정
+3. `지금 할 일` — numbered, max 5
+4. `문제 지도` — fields in `references/problem-map-output.md`
+5. `방향 대안` — A/B/C table on logic PRs (`references/direction-alternative-gate.md`)
+6. `구조·역할` / `모션` / `테스트` — only when that pass changes a merge decision
 7. `검증 결과` — **PR axis**, **direction alternative**, **ensemble**, **caller context** / **path tags** / **scenario matrix** (nav PRs), **test scope** / **test review** (test PRs), **react-doctor**, **sonarlint (local CLI)**, **rnsec**, **fuck-u-code**, **thermo-nuclear** rows (all mandatory when in scope)
+8. Last line = `Next:` one action under two minutes
 
 ### Severity icons
 

@@ -1,6 +1,8 @@
 ---
+
 name: design-component
 description: Design a UI component spec to the house quality bar — anatomy, variants, sizes, the 8 states, token mapping, and accessibility. Use when the user wants to design or document a component (button, input, tabs, toast, combobox, date picker, modal, etc.) at the spec level before or alongside code. For generating framework code, use design-code.
+disable-model-invocation: true
 ---
 
 # Skill: Design Component

@@ -1,7 +1,9 @@
 ---
+
 name: autocontext
 description: Run iterative agent evaluation and improvement loops (judge, improve, scenarios, playbooks) via pi-autocontext or autoctx CLI. Use when improving repeatable agent workflows (review rubrics, skill quality, scenario-based feedback), checking run status, or accumulating knowledge—not for one-off code edits or repo pattern drift (use continuity) or single PR review (use zereight-review).
 argument-hint: "[judge|improve|solve|status|scenarios]"
+disable-model-invocation: true
 ---
 
 # autocontext (skill repo)

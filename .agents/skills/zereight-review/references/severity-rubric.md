@@ -35,6 +35,7 @@ Issues that reduce maintainability or clarity, but don't affect runtime behavior
 ## Downgrade rules
 
 - If a Medium issue requires a contrived or near-impossible input combination → downgrade to Low
+- If a High/Medium issue is "if event E then defect D" and E is an **unconfirmed** library throw, false-return, or destroyed-Activity path → downgrade to Low until callee source, docs, or a repro (zereight-review **Rule 7**)
 - If a High issue is already protected by a layer above (validated at API boundary, etc.) → downgrade to Medium
 - If the bad path needs an **unconfirmed API contract** (e.g. assumed partial-fail shape on a mock→API PR) → downgrade to Info / Ask until spec, GIF, or API PR confirms the path
 - If the diff is an intentional **axis B** source-of-truth change (client heuristic → server field) and only “differs from develop” → do not report as Medium/High regression; Ask or note as intentional

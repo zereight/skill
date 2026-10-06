@@ -1,6 +1,8 @@
 ---
+
 name: ux-writing
 description: Write or review UI copy — buttons, errors, empty states, microcopy, notifications, labels — using the voice & tone system (clear, concise, useful, human, honest) with the what→why→how error formula and inclusive-language rules. Use when the user needs interface copy, error messages, empty-state text, or a copy review.
+disable-model-invocation: true
 ---
 
 # Skill: UX Writing

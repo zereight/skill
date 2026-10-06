@@ -1,6 +1,8 @@
 ---
+
 name: governance
 description: Govern how the design system evolves — SemVer for tokens/components, the contribution workflow, deprecation policy, and change communication. Use when the user wants to add/promote/deprecate a component or token, decide a version bump, set up a contribution process, or keep the system from fragmenting.
+disable-model-invocation: true
 ---
 
 # Skill: Governance

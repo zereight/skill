@@ -1,0 +1,56 @@
+{
+  "title": "zer — 줄이 hunk 안인지 검증",
+  "flow": [
+    {"id": "read", "screen": "리뷰 지적", "action": "줄번호"},
+    {"id": "run", "screen": "터미널", "action": "zer verify",
+     "result": {"before": "판정 없음", "after": "ok 또는 out-of-hunk"}}
+  ],
+  "files": [
+    {"id": "verify-rs", "path": "zer/src/verify.rs", "lines": [
+      {"kind": "ctx", "text": "pub fn check_finding(manifest: &Manifest, finding: &serde_json::Value) -> CheckResult {"},
+      {"kind": "ctx", "text": "    let Some(entry) = manifest.files.iter().find(|f| f.path == file) else {"},
+      {"kind": "ctx", "text": "            verdict: Verdict::UnknownFile,"},
+      {"kind": "ctx", "text": "    };"},
+      {"kind": "add", "text": "    let hit = entry.hunks.iter().any(|h| line >= h.start && line < h.start.saturating_add(h.count));"},
+      {"kind": "add", "text": "    if !hit {"},
+      {"kind": "add", "text": "            verdict: Verdict::OutOfHunk,"},
+      {"kind": "ctx", "text": "    }"},
+      {"kind": "add", "text": "    CheckResult { id: Some(rid), verdict: Verdict::Ok, reason: None }"}
+    ]},
+    {"id": "manifest-rs", "path": "zer/src/manifest.rs", "lines": [
+      {"kind": "ctx", "text": "pub fn build_manifest(repo: &str, base: &str, head: &str) -> io::Result<Manifest> {"},
+      {"kind": "add", "text": "    let range = format!(\"{base}...{head}\");"},
+      {"kind": "ctx", "text": "    let status_out = Command::new(\"git\")"},
+      {"kind": "add", "text": "        .args([\"diff\", &range, \"--name-status\", \"-z\"])"},
+      {"kind": "ctx", "text": "    let diff_out = Command::new(\"git\")"},
+      {"kind": "add", "text": "        .args([\"diff\", &range, \"-U0\", \"--no-color\"])"},
+      {"kind": "ctx", "text": "    let parsed = parse_diff(&String::from_utf8_lossy(&diff_out.stdout));"},
+      {"kind": "add", "text": "    Ok(Manifest { version: 1, base: base.to_string(), head: head.to_string(), files, scopes, bundles })"}
+    ]}
+  ],
+  "mechanism": {
+    "before": [
+      {"label": "지적 JSON을 읽는다"},
+      {"label": "file·line을 그대로 쓴다"},
+      {"label": "hunk를 안 본다", "fail": true},
+      {"label": "diff 밖 줄도 통과"}
+    ],
+    "after": [
+      {"label": "manifest로 hunk 고정"},
+      {"label": "finding line 읽기"},
+      {"label": "hunk 안인지 비교"},
+      {"label": "ok 또는 out-of-hunk"}
+    ]
+  },
+  "beats": [
+    {"kind": "flow", "step": "read", "state": "before", "caption": "모델이 적은 줄이 diff 밖이면 믿을 수 없다"},
+    {"kind": "flow", "step": "run", "state": "before", "caption": "zer manifest로 커밋 diff만 JSON에 고정한다"},
+    {"kind": "mechanism", "state": "before", "caption": "검증 없이 줄번호만 믿으면 환각이 통과한다"},
+    {"kind": "code", "file": "manifest-rs", "caption": "git diff base…HEAD에서 파일과 hunk를 뽑는다"},
+    {"kind": "code", "file": "verify-rs", "caption": "지적 line이 그 hunk 안인지 검사한다"},
+    {"kind": "mechanism", "state": "after", "caption": "hunk 안이면 ok, 밖이면 out-of-hunk로 거절한다"},
+    {"kind": "link", "step": "run", "file": "manifest-rs", "line": 1, "caption": "manifest는 이 git 범위에서 시작한다"},
+    {"kind": "link", "step": "read", "file": "verify-rs", "line": 4, "caption": "이 비교가 ok와 out-of-hunk를 나눈다"},
+    {"kind": "flow", "step": "run", "state": "after", "caption": "모델은 안 부르고 줄번호만 코드로 고정한다"}
+  ]
+}
