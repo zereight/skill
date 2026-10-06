@@ -1,7 +1,9 @@
 ---
+
 name: continuity
 description: Learn, record, audit, and apply codebase patterns consistently across a repository by comparing current code to canonical local examples and a repo-local pattern registry. Use when asked to preserve continuity, learn a pattern, check drift, fix inconsistent implementations, migrate code to a local convention, or produce a CI-friendly continuity report.
 argument-hint: "[learn|check|fix|ci] [pattern-name-or-paths]"
+disable-model-invocation: true
 ---
 
 # Continuity

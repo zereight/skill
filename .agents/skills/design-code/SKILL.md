@@ -1,6 +1,8 @@
 ---
+
 name: design-code
 description: Generate production-ready, accessible, token-driven component code for ANY framework — React+Tailwind, Next.js, SwiftUI, Vue, Svelte, Angular, Solid, Web Components/Lit, React Native, Flutter, Jetpack Compose, vanilla CSS, or CSS-in-JS. Use when the user wants working UI code for a component or screen in a specific stack.
+disable-model-invocation: true
 ---
 
 # Skill: Design Code

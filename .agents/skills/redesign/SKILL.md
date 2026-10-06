@@ -1,6 +1,8 @@
 ---
+
 name: redesign
 description: Upgrade an existing website or app to premium quality without breaking functionality — audit the current design, identify generic/AI tells, then apply taste and system rules surgically. Use when the user wants to improve, modernize, polish, or "make better" an existing UI/codebase.
+disable-model-invocation: true
 ---
 
 # Skill: Redesign & Audit

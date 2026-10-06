@@ -1,6 +1,8 @@
 ---
+
 name: engineering-manager
 description: reusable engineering manager workflow for complex agentic or human-led engineering tasks that require coordinating specialists, auditing repositories, implementing changes, validating with project-native commands, opening pull requests, resolving review comments, and running an independent final audit. Use when the user asks an agent or engineering lead to coordinate multi-agent or multi-reviewer implementation, create a PR, install project rules or skills, perform large refactors, enforce validation gates, or manage a complex engineering issue from intake through merge readiness.
+disable-model-invocation: true
 ---
 
 # Engineering Manager

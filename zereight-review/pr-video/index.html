@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<style>
+  html, body { margin: 0; background: #1a120c; overflow: hidden; }
+  canvas { display: block; margin: 0 auto; }
+</style>
+</head>
+<body>
+<canvas id="stage" width="1280" height="720"></canvas>
+<script>
+const STORY = {"title": "zer — 줄이 hunk 안인지 검증", "flow": [{"id": "read", "screen": "리뷰 지적", "action": "줄번호"}, {"id": "run", "screen": "터미널", "action": "zer verify", "result": {"before": "판정 없음", "after": "ok 또는 out-of-hunk"}}], "files": [{"id": "verify-rs", "path": "zer/src/verify.rs", "lines": [{"kind": "ctx", "text": "pub fn check_finding(manifest: &Manifest, finding: &serde_json::Value)"}, {"kind": "ctx", "text": "    let Some(entry) = manifest.files.iter().find(|f| f.path == file) e"}, {"kind": "ctx", "text": "            verdict: Verdict::UnknownFile,"}, {"kind": "ctx", "text": "    };"}, {"kind": "add", "text": "    let hit = entry.hunks.iter().any(|h| line >= h.start && line \u003c h.s"}, {"kind": "add", "text": "    if !hit {"}, {"kind": "add", "text": "            verdict: Verdict::OutOfHunk,"}, {"kind": "ctx", "text": "    }"}, {"kind": "add", "text": "    CheckResult { id: Some(rid), verdict: Verdict::Ok, reason: None }"}]}, {"id": "manifest-rs", "path": "zer/src/manifest.rs", "lines": [{"kind": "ctx", "text": "pub fn build_manifest(repo: &str, base: &str, head: &str) -> io::Resul"}, {"kind": "add", "text": "    let range = format!(\"{base}...{head}\");"}, {"kind": "ctx", "text": "    let status_out = Command::new(\"git\")"}, {"kind": "add", "text": "        .args([\"diff\", &range, \"--name-status\", \"-z\"])"}, {"kind": "ctx", "text": "    let diff_out = Command::new(\"git\")"}, {"kind": "add", "text": "        .args([\"diff\", &range, \"-U0\", \"--no-color\"])"}, {"kind": "ctx", "text": "    let parsed = parse_diff(&String::from_utf8_lossy(&diff_out.stdout)"}, {"kind": "add", "text": "    Ok(Manifest { version: 1, base: base.to_string(), head: head.to_st"}]}], "mechanism": {"before": [{"label": "지적 JSON을 읽는다", "fail": false}, {"label": "file·line을 그대로 쓴다", "fail": false}, {"label": "hunk를 안 본다", "fail": true}, {"label": "diff 밖 줄도 통과", "fail": false}], "after": [{"label": "manifest로 hunk 고정", "fail": false}, {"label": "finding line 읽기", "fail": false}, {"label": "hunk 안인지 비교", "fail": false}, {"label": "ok 또는 out-of-hunk", "fail": false}]}, "beats": [{"kind": "flow", "caption": "모델이 적은 줄이 diff 밖이면 믿을 수 없다", "step": "read", "state": "before"}, {"kind": "flow", "caption": "zer manifest로 커밋 diff만 JSON에 고정한다", "step": "run", "state": "before"}, {"kind": "mechanism", "caption": "검증 없이 줄번호만 믿으면 환각이 통과한다", "state": "before"}, {"kind": "code", "caption": "git diff base…HEAD에서 파일과 hunk를 뽑는다", "file": "manifest-rs"}, {"kind": "code", "caption": "지적 line이 그 hunk 안인지 검사한다", "file": "verify-rs"}, {"kind": "mechanism", "caption": "hunk 안이면 ok, 밖이면 out-of-hunk로 거절한다", "state": "after"}, {"kind": "link", "caption": "manifest는 이 git 범위에서 시작한다", "step": "run", "file": "manifest-rs", "line": 1}, {"kind": "link", "caption": "이 비교가 ok와 out-of-hunk를 나눈다", "step": "read", "file": "verify-rs", "line": 4}, {"kind": "flow", "caption": "모델은 안 부르고 줄번호만 코드로 고정한다", "step": "run", "state": "after"}]};
+const DEFAULT_SEC = { flow: 3.2, code: 5.5, link: 3.2, mechanism: 5 };
+const INK = "#24180f";
+const PAPER = "#efe2c9";
+const CARD = "#f7f1e2";
+const RED = "#c23b22";
+const GREEN = "#2f7d4a";
+const TEAL = "#1f6f6a";
+const GOLD = "#c4881a";
+const CODE_BG = "#1d1a17";
+const MONO = "20px ui-monospace, SFMono-Regular, Menlo, monospace";
+const SANS = "Apple SD Gothic Neo, sans-serif";
+const LINE_H = 28;
+const PHONE = { x: 110, y: 120, w: 300, h: 500 };
+const PANEL = { x: 500, y: 120, w: 720, h: 500 };
+const canvas = document.getElementById("stage");
+const ctx = canvas.getContext("2d");
+
+const timeline = [];
+let clock = 0;
+STORY.beats.forEach((beat) => {
+  const sec = beat.sec || DEFAULT_SEC[beat.kind];
+  timeline.push({ beat, start: clock, end: clock + sec });
+  clock += sec;
+});
+const TOTAL = clock;
+const stepIndex = Object.fromEntries(STORY.flow.map((step, index) => [step.id, index]));
+const fileIndex = Object.fromEntries(STORY.files.map((file, index) => [file.id, index]));
+
+function ease(p) {
+  const t = Math.max(0, Math.min(1, p));
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+function lerp(a, b, p) { return a + (b - a) * p; }
+
+function stateAt(seconds) {
+  const applied = new Set();
+  let flowStep = 0;
+  let flowState = "before";
+  let file = 0;
+  let current = timeline[timeline.length - 1];
+  for (const slot of timeline) {
+    if (seconds < slot.start) break;
+    current = slot;
+    const done = seconds >= slot.end;
+    if (slot.beat.kind === "flow") {
+      flowStep = stepIndex[slot.beat.step];
+      flowState = slot.beat.state;
+    }
+    if (slot.beat.kind === "code") {
+      file = fileIndex[slot.beat.file];
+      if (done) applied.add(file);
+    }
+    if (slot.beat.kind === "link") {
+      flowStep = stepIndex[slot.beat.step];
+      file = fileIndex[slot.beat.file];
+    }
+  }
+  const local = (seconds - current.start) / (current.end - current.start);
+  return { beat: current.beat, local: Math.max(0, Math.min(1, local)), applied, flowStep, flowState, file };
+}
+
+function card(x, y, w, h, fill, shadow) {
+  ctx.fillStyle = shadow;
+  ctx.fillRect(x + 8, y + 8, w, h);
+  ctx.fillStyle = fill;
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 3;
+  ctx.strokeRect(x, y, w, h);
+}
+
+function buttonRect() {
+  return { x: PHONE.x + 40, y: PHONE.y + PHONE.h - 120, w: PHONE.w - 80, h: 56 };
+}
+
+function drawPhone(state, highlight) {
+  const step = STORY.flow[state.flowStep];
+  card(PHONE.x, PHONE.y, PHONE.w, PHONE.h, CARD, highlight ? GOLD : TEAL);
+  ctx.fillStyle = INK;
+  ctx.fillRect(PHONE.x, PHONE.y, PHONE.w, 54);
+  ctx.fillStyle = CARD;
+  ctx.font = `22px ${SANS}`;
+  ctx.fillText(step.screen, PHONE.x + 18, PHONE.y + 35);
+  ctx.fillStyle = "rgba(36,24,15,0.12)";
+  for (let i = 0; i < 3; i++) ctx.fillRect(PHONE.x + 30, PHONE.y + 90 + i * 60, PHONE.w - 60 - i * 40, 34);
+  const b = buttonRect();
+  ctx.fillStyle = TEAL;
+  ctx.fillRect(b.x, b.y, b.w, b.h);
+  ctx.fillStyle = CARD;
+  ctx.font = `22px ${SANS}`;
+  ctx.textAlign = "center";
+  ctx.fillText(step.action, b.x + b.w / 2, b.y + 36);
+  ctx.textAlign = "left";
+  if (state.beat.kind === "flow") {
+    const tap = ease(state.local / 0.4);
+    ctx.strokeStyle = GOLD;
+    ctx.lineWidth = 4;
+    ctx.globalAlpha = 1 - tap;
+    ctx.beginPath();
+    ctx.arc(b.x + b.w / 2, b.y + b.h / 2, 12 + tap * 50, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    if (state.local > 0.45) {
+      const mark = ease((state.local - 0.45) / 0.25);
+      const ok = state.flowState === "after";
+      const cx = PHONE.x + PHONE.w / 2;
+      const cy = PHONE.y + 300;
+      ctx.globalAlpha = mark;
+      ctx.fillStyle = ok ? GREEN : RED;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 20 + 14 * mark, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = CARD;
+      ctx.font = `bold 32px ${SANS}`;
+      ctx.textAlign = "center";
+      ctx.fillText(ok ? "✓" : "✕", cx, cy + 11);
+      if (step.result) {
+        ctx.fillStyle = ok ? GREEN : RED;
+        ctx.font = `bold 21px ${SANS}`;
+        ctx.fillText(ok ? step.result.after : step.result.before, cx, b.y - 22);
+      }
+      ctx.textAlign = "left";
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+function drawFlowStrip(state) {
+  const y = PHONE.y + PHONE.h + 44;
+  const gap = PHONE.w / Math.max(1, STORY.flow.length - 1);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(PHONE.x, y);
+  ctx.lineTo(PHONE.x + PHONE.w, y);
+  ctx.stroke();
+  STORY.flow.forEach((step, index) => {
+    const x = STORY.flow.length === 1 ? PHONE.x + PHONE.w / 2 : PHONE.x + index * gap;
+    ctx.fillStyle = index === state.flowStep ? GOLD : CARD;
+    ctx.beginPath();
+    ctx.arc(x, y, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+}
+
+function lineVisible(line, fileNo, state) {
+  const inDiff = state.beat.kind === "code" && fileIndex[state.beat.file] === fileNo;
+  const applied = state.applied.has(fileNo);
+  if (line.kind === "add") return applied || inDiff;
+  return true;
+}
+
+function drawCode(state, focusLine) {
+  const file = STORY.files[state.file];
+  card(PANEL.x, PANEL.y, PANEL.w, PANEL.h, CODE_BG, RED);
+  ctx.fillStyle = GOLD;
+  ctx.fillRect(PANEL.x, PANEL.y, PANEL.w, 40);
+  ctx.fillStyle = INK;
+  ctx.font = `18px ui-monospace, Menlo, monospace`;
+  ctx.fillText(file.path, PANEL.x + 16, PANEL.y + 27);
+  const inDiff = state.beat.kind === "code" && fileIndex[state.beat.file] === state.file;
+  const applied = state.applied.has(state.file);
+  const p = inDiff ? ease(state.local / 0.8) : applied ? 1 : 0;
+  let row = 0;
+  const rows = [];
+  file.lines.forEach((line, index) => {
+    if (!lineVisible(line, state.file, state)) return;
+    const y = PANEL.y + 72 + row * LINE_H;
+    rows.push({ index, y });
+    const show = line.kind === "add" ? p : 1;
+    if (line.kind === "del") {
+      ctx.fillStyle = `rgba(194,59,34,${0.25 + 0.2 * p})`;
+      ctx.fillRect(PANEL.x + 8, y - 20, PANEL.w - 16, LINE_H - 2);
+    }
+    if (line.kind === "add") {
+      ctx.fillStyle = `rgba(47,125,74,${0.35 * show})`;
+      ctx.fillRect(PANEL.x + 8, y - 20, (PANEL.w - 16) * Math.max(0.02, show), LINE_H - 2);
+    }
+    if (index === focusLine) {
+      ctx.strokeStyle = GOLD;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(PANEL.x + 6, y - 22, PANEL.w - 12, LINE_H + 2);
+    }
+    ctx.font = MONO;
+    const sign = line.kind === "del" ? "-" : line.kind === "add" ? "+" : " ";
+    ctx.fillStyle = line.kind === "del" ? "#f2a391" : line.kind === "add" ? "#9fdcb0" : "#d9cfbe";
+    const text = line.kind === "add" ? line.text.slice(0, Math.ceil(line.text.length * show)) : line.text;
+    ctx.fillText(`${sign} ${text}`, PANEL.x + 20, y);
+    if (line.kind === "del" && p > 0) {
+      const width = ctx.measureText(`${sign} ${line.text}`).width;
+      ctx.strokeStyle = RED;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(PANEL.x + 20, y - 7);
+      ctx.lineTo(PANEL.x + 20 + width * p, y - 7);
+      ctx.stroke();
+    }
+    row += 1;
+  });
+  return rows;
+}
+
+function drawLink(state, rows) {
+  const target = rows.find((row) => row.index === state.beat.line) || rows[0];
+  if (!target) return;
+  const b = buttonRect();
+  const sx = b.x + b.w;
+  const sy = b.y + b.h / 2;
+  const ex = PANEL.x + 10;
+  const ey = target.y - 8;
+  const p = ease(state.local / 0.7);
+  ctx.strokeStyle = GOLD;
+  ctx.lineWidth = 5;
+  ctx.setLineDash([12, 8]);
+  ctx.beginPath();
+  const steps = 30;
+  for (let i = 0; i <= steps * p; i++) {
+    const t = i / steps;
+    const cx = lerp(sx, ex, 0.5);
+    const x = (1 - t) * (1 - t) * sx + 2 * (1 - t) * t * cx + t * t * ex;
+    const y = (1 - t) * (1 - t) * sy + 2 * (1 - t) * t * (Math.min(sy, ey) - 120) + t * t * ey;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawMechanism(state) {
+  const which = state.beat.state;
+  const steps = STORY.mechanism[which];
+  card(PANEL.x, PANEL.y, PANEL.w, PANEL.h, CODE_BG, which === "after" ? GREEN : RED);
+  ctx.fillStyle = which === "after" ? GREEN : RED;
+  ctx.fillRect(PANEL.x, PANEL.y, PANEL.w, 40);
+  ctx.fillStyle = CARD;
+  ctx.font = `bold 20px ${SANS}`;
+  ctx.fillText(which === "after" ? "작동 방식 · 고친 뒤" : "작동 방식 · 고치기 전", PANEL.x + 16, PANEL.y + 27);
+  const boxW = 460;
+  const boxH = 56;
+  const gap = Math.min(34, (PANEL.h - 80 - steps.length * boxH) / Math.max(1, steps.length - 1));
+  const bx = PANEL.x + (PANEL.w - boxW) / 2;
+  const top = PANEL.y + 64;
+  const failAt = steps.findIndex((step) => step.fail);
+  const stopAt = failAt === -1 ? steps.length - 1 : failAt;
+  const travel = ease(state.local / 0.8) * stopAt;
+  steps.forEach((step, index) => {
+    const y = top + index * (boxH + gap);
+    const reached = travel >= index - 0.001;
+    const failed = reached && index === failAt;
+    const dead = failAt !== -1 && index > failAt;
+    ctx.fillStyle = failed ? RED : reached ? (which === "after" ? GREEN : TEAL) : "#3a342e";
+    ctx.globalAlpha = dead ? 0.35 : 1;
+    ctx.fillRect(bx, y, boxW, boxH);
+    ctx.strokeStyle = reached ? GOLD : "#6b6158";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(bx, y, boxW, boxH);
+    ctx.fillStyle = CARD;
+    ctx.font = `22px ${SANS}`;
+    ctx.fillText(`${index + 1}. ${step.label}`, bx + 20, y + 36);
+    if (failed) {
+      ctx.font = `bold 28px ${SANS}`;
+      ctx.fillText("✕", bx + boxW - 44, y + 38);
+    }
+    if (reached && which === "after" && index === steps.length - 1 && state.local > 0.8) {
+      ctx.font = `bold 28px ${SANS}`;
+      ctx.fillText("✓", bx + boxW - 44, y + 38);
+    }
+    if (index < steps.length - 1) {
+      ctx.strokeStyle = dead || index >= stopAt ? "#6b6158" : GOLD;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(bx + boxW / 2, y + boxH);
+      ctx.lineTo(bx + boxW / 2, y + boxH + gap);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  });
+  const seg = Math.floor(Math.min(travel, stopAt - 0.0001));
+  const frac = travel - seg;
+  if (stopAt > 0 && state.local < 0.8) {
+    const y0 = top + seg * (boxH + gap) + boxH / 2;
+    const ty = lerp(y0, y0 + boxH + gap, frac);
+    ctx.fillStyle = GOLD;
+    ctx.beginPath();
+    ctx.arc(bx - 26, ty, 10, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawCaption(state) {
+  const fade = Math.min(1, state.local / 0.12, (1 - state.local) / 0.1);
+  ctx.globalAlpha = Math.max(0, fade);
+  ctx.fillStyle = INK;
+  ctx.fillRect(PANEL.x, 648, PANEL.w, 52);
+  ctx.fillStyle = CARD;
+  ctx.font = `24px ${SANS}`;
+  ctx.fillText(state.beat.caption, PANEL.x + 20, 682);
+  ctx.globalAlpha = 1;
+}
+
+function draw(seconds) {
+  const t = Math.max(0, Math.min(TOTAL - 0.001, seconds));
+  const state = stateAt(t);
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(0, 0, 1280, 720);
+  ctx.fillStyle = INK;
+  ctx.font = `34px ${SANS}`;
+  ctx.fillText(STORY.title, 60, 72);
+  ctx.strokeStyle = RED;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(60, 88);
+  ctx.lineTo(60 + Math.min(700, ctx.measureText(STORY.title).width), 91);
+  ctx.stroke();
+  drawPhone(state, state.beat.kind !== "code");
+  drawFlowStrip(state);
+  if (state.beat.kind === "mechanism") {
+    drawMechanism(state);
+  } else {
+    const focus = state.beat.kind === "link" ? state.beat.line : -1;
+    const rows = drawCode(state, focus);
+    if (state.beat.kind === "link") drawLink(state, rows);
+  }
+  drawCaption(state);
+}
+
+let hold = null;
+function renderAt(seconds) {
+  hold = seconds;
+  draw(seconds);
+}
+window.renderAt = renderAt;
+window.FILM_TOTAL = TOTAL;
+draw(0);
+const origin = performance.now();
+function loop(now) {
+  if (hold === null) draw(((now - origin) / 1000) % TOTAL);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

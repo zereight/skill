@@ -1,6 +1,8 @@
 ---
+
 name: design-tokens
 description: Generate, extend, or audit design tokens in DTCG format with the 3-tier architecture (primitive → semantic → component). Use when the user wants a color palette, type scale, spacing/shadow/radius/motion tokens, multi-brand theming, or wants to validate token files. Covers colors, typography, spacing, shadows, borders, breakpoints, motion, gradients, opacity, blur, sizing, states, theming.
+disable-model-invocation: true
 ---
 
 # Skill: Design Tokens

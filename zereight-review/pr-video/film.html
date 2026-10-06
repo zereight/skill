@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<style>
+  html, body { margin: 0; background: #050814; overflow: hidden; }
+  canvas { display: block; }
+  button {
+    position: fixed; top: 16px; left: 16px; z-index: 2;
+    background: #050814; color: #3FE0C5; border: 1px solid #3FE0C5;
+    font: 16px/1 "Apple SD Gothic Neo", sans-serif; padding: 8px 14px;
+  }
+  button.rec { visibility: hidden; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<button id="record" type="button">Record</button>
+<script type="module">
+import * as THREE from "three";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+
+const STORY = {"title": "zer", "thing": "지적", "place": "범위", "scenes": [{"id": "why", "action": "notice", "narration": "범위가 반짝거려. 줄이 틀리면 못 믿어."}, {"id": "broken", "action": "blocked", "narration": "지적이 벽에 막혀. 상자 밖 줄은 안 돼."}, {"id": "fix", "action": "passes", "narration": "벽이 내려가고 지적이 맞는 길로 가."}, {"id": "left", "action": "crumb", "narration": "밖에 리뷰 말이 남아. 그건 스킬이 해."}], "ends": [6.0, 12.0, 18.0, 24.0], "vertical": false};
+const BPM = 140;
+const ACTIONS = { notice: 0, drops: 1, blocked: 2, keeps: 3, passes: 4, crumb: 5, clear: 6 };
+const vertical = STORY.vertical || new URLSearchParams(location.search).has("vertical");
+const width = vertical ? 720 : 1280;
+const height = vertical ? 1280 : 720;
+const ends = STORY.ends;
+const total = ends[ends.length - 1];
+
+const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(width, height);
+renderer.setClearColor(0x050814, 1);
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(48, width / height, 0.1, 80);
+camera.position.set(0, 0.4, 8);
+
+const count = 70000;
+const positions = new Float32Array(count * 3);
+const seeds = new Float32Array(count);
+for (let i = 0; i < count; i++) {
+  const z = Math.random() * 2 - 1;
+  const t = Math.random() * Math.PI * 2;
+  const r = Math.sqrt(1 - z * z);
+  positions[i * 3] = Math.cos(t) * r;
+  positions[i * 3 + 1] = Math.sin(t) * r;
+  positions[i * 3 + 2] = z;
+  seeds[i] = Math.random();
+}
+const geo = new THREE.BufferGeometry();
+geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+geo.setAttribute("aSeed", new THREE.BufferAttribute(seeds, 1));
+const points = new THREE.Points(geo, new THREE.ShaderMaterial({
+  transparent: true,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+  uniforms: { uLocal: { value: 0 }, uAction: { value: 0 }, uFlash: { value: 0 } },
+  vertexShader: `
+    attribute float aSeed;
+    uniform float uLocal;
+    uniform int uAction;
+    varying float vSeed;
+    vec3 ease(vec3 a, vec3 b, float p) {
+      float s = p * p * (3.0 - 2.0 * p);
+      return mix(a, b, s);
+    }
+    void main() {
+      vSeed = aSeed;
+      vec3 dir = normalize(position);
+      float local = clamp(uLocal, 0.0, 1.0);
+      vec3 p = dir * 0.15;
+      if (uAction == 0) p = dir * mix(0.05, 2.2 + aSeed * 5.5, local);
+      else if (uAction == 1) p = dir * mix(4.5, 0.05, local) * (0.4 + aSeed);
+      else if (uAction == 2) {
+        float travel = mix(-4.0, 1.2, local);
+        p = vec3(dir.x * 2.0 + travel, dir.y * 1.4, dir.z);
+        if (p.x > 0.6) p.x = 0.6 - (p.x - 0.6);
+      } else if (uAction == 3) {
+        float ang = aSeed * 6.2831 + local * 4.0;
+        float rad = 1.2 + aSeed * 2.4;
+        p = vec3(cos(ang) * rad, sin(ang * 0.7) * 0.6, sin(ang) * rad);
+      } else if (uAction == 4) {
+        p = vec3(dir.x * 1.6, dir.y * 1.6, mix(-3.0, 6.0, local) * (0.3 + aSeed));
+      } else if (uAction == 5) {
+        float keep = step(0.92, aSeed);
+        p = dir * mix(3.0, keep * (1.2 + aSeed), local);
+      } else {
+        float ang = aSeed * 6.2831;
+        vec3 ring = vec3(cos(ang) * 2.2, sin(ang) * 0.35, sin(ang) * 2.2);
+        p = mix(dir * 4.0, ring, local);
+      }
+      vec4 mv = modelViewMatrix * vec4(p, 1.0);
+      gl_Position = projectionMatrix * mv;
+      gl_PointSize = 3.5 * (0.7 + aSeed);
+    }
+  `,
+  fragmentShader: `
+    uniform float uFlash;
+    uniform float uLocal;
+    uniform int uAction;
+    varying float vSeed;
+    void main() {
+      vec2 uv = gl_PointCoord - 0.5;
+      if (uAction == 0 && vSeed > 0.03 + uLocal * 0.97) discard;
+      float d = length(uv);
+      if (d > 0.5) discard;
+      vec3 col = mix(vec3(0.247, 0.878, 0.773), vec3(1.0, 0.702, 0.278), vSeed);
+      col = mix(col, vec3(0.482, 0.361, 1.0), smoothstep(0.7, 1.0, vSeed));
+      col += vec3(uFlash);
+      gl_FragColor = vec4(col, smoothstep(0.5, 0.05, d) * 0.55);
+    }
+  `,
+}));
+scene.add(points);
+
+const ring = new THREE.Mesh(
+  new THREE.RingGeometry(0.2, 0.28, 96),
+  new THREE.MeshBasicMaterial({ color: 0x3fe0c5, side: THREE.DoubleSide, transparent: true, opacity: 0.35 }),
+);
+scene.add(ring);
+
+const subCanvas = document.createElement("canvas");
+subCanvas.width = 1280;
+subCanvas.height = 180;
+const subTex = new THREE.CanvasTexture(subCanvas);
+const sub = new THREE.Mesh(
+  new THREE.PlaneGeometry(1.7, 0.28),
+  new THREE.MeshBasicMaterial({ map: subTex, transparent: true, depthTest: false }),
+);
+sub.position.set(0, -0.78, 0);
+const overlay = new THREE.Scene();
+const overlayCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 2);
+overlayCam.position.z = 1;
+overlay.add(sub);
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(width, height), 0.35, 0.4, 0.78);
+composer.addPass(bloom);
+composer.addPass(new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, uFlash: { value: 0 }, uTime: { value: 0 } },
+  vertexShader: "varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }",
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform float uFlash;
+    uniform float uTime;
+    varying vec2 vUv;
+    void main() {
+      vec2 uv = vUv;
+      float aber = 0.0015 + uFlash * 0.012;
+      vec2 off = (uv - 0.5) * aber;
+      float r = texture2D(tDiffuse, uv + off).r;
+      float g = texture2D(tDiffuse, uv).g;
+      float b = texture2D(tDiffuse, uv - off).b;
+      vec3 col = vec3(r, g, b);
+      vec2 guv = uv * vec2(1280.0, 720.0);
+      float grain = fract(sin(dot(guv + uTime, vec2(12.9898, 78.233))) * 43758.5453);
+      col += (grain - 0.5) * 0.045;
+      vec2 q = uv - 0.5;
+      col *= smoothstep(0.95, 0.35, length(q));
+      col = mix(col, vec3(1.0), uFlash * 0.55);
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `,
+}));
+composer.addPass(new OutputPass());
+const grade = composer.passes[2];
+
+const recordButton = document.getElementById("record");
+recordButton.addEventListener("click", () => {
+  const stream = renderer.domElement.captureStream(60);
+  const recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp9", videoBitsPerSecond: 25000000 });
+  const chunks = [];
+  recorder.ondataavailable = (event) => { if (event.data.size) chunks.push(event.data); };
+  recorder.onstop = () => {
+    const blob = new Blob(chunks, { type: "video/webm" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "pr-video.webm";
+    link.click();
+    recordButton.classList.remove("rec");
+  };
+  recordButton.classList.add("rec");
+  recorder.start();
+  const started = performance.now();
+  const tick = (now) => {
+    if (now - started >= total * 1000) recorder.stop();
+    else requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+});
+
+function sceneAt(seconds) {
+  let index = ends.length - 1;
+  for (let i = 0; i < ends.length; i++) {
+    if (seconds < ends[i]) { index = i; break; }
+  }
+  const start = index === 0 ? 0 : ends[index - 1];
+  const span = Math.max(0.2, ends[index] - start);
+  return { index, local: (seconds - start) / span, scene: STORY.scenes[index] };
+}
+
+function paintSubtitle(text, opacity) {
+  const ctx = subCanvas.getContext("2d");
+  ctx.clearRect(0, 0, subCanvas.width, subCanvas.height);
+  if (opacity <= 0) { subTex.needsUpdate = true; return; }
+  ctx.globalAlpha = opacity;
+  ctx.fillStyle = "rgba(5,8,20,0.62)";
+  ctx.fillRect(140, 28, 1000, 124);
+  ctx.fillStyle = "#f4f1ea";
+  ctx.font = "56px Apple SD Gothic Neo, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, subCanvas.width / 2, subCanvas.height / 2);
+  subTex.needsUpdate = true;
+}
+
+function renderAt(seconds) {
+  const clamped = Math.max(0, Math.min(total - 0.001, seconds));
+  const { local, scene } = sceneAt(clamped);
+  const beat = 60 / BPM;
+  const flash = (clamped / beat) % 4 < 0.08 ? 1 : 0;
+  points.material.uniforms.uLocal.value = local;
+  points.material.uniforms.uAction.value = ACTIONS[scene.action];
+  points.material.uniforms.uFlash.value = flash;
+  grade.uniforms.uFlash.value = flash;
+  grade.uniforms.uTime.value = clamped;
+  bloom.strength = 0.28 + flash * 0.45;
+  const dolly = clamped * 0.35;
+  camera.position.set(Math.sin(dolly) * 1.1, 0.45 + Math.sin(dolly * 0.6) * 0.25, 8.5 - Math.sin(dolly) * 0.6);
+  camera.lookAt(0, 0, 0);
+  ring.scale.setScalar(0.15 + local * 1.4);
+  ring.material.opacity = scene.action === "notice" ? (1 - local) * 0.55 : 0.0;
+  const shown = local < 0.08 ? 0 : Math.min(1, (local - 0.08) / 0.12);
+  paintSubtitle(scene.narration, shown * (local > 0.92 ? (1 - local) / 0.08 : 1));
+  composer.render();
+  renderer.autoClear = false;
+  renderer.clearDepth();
+  renderer.render(overlay, overlayCam);
+  renderer.autoClear = true;
+}
+
+window.renderAt = renderAt;
+renderAt(0);
+let origin = performance.now();
+function loop(now) {
+  renderAt(((now - origin) / 1000) % total);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

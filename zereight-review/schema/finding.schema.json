@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "zereight-review finding record",
+  "description": "Minimum shape for zer verify. Array items may also be strings of the form file:line or file:line:old. Enforced by zer/src/verify.rs. Severity, if present, maps to skill marks: critical=red, major=orange, minor=yellow, trivial=blue, info=white, refactor=wrench.",
+  "oneOf": [
+    {
+      "type": "string",
+      "pattern": "^.+:[1-9][0-9]*(:(old|new))?$"
+    },
+    {
+      "type": "object",
+      "required": ["file", "line"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "file": { "type": "string", "minLength": 1, "description": "Repo-relative path, must appear in the manifest" },
+        "line": { "type": "integer", "minimum": 1, "description": "New-file line, or old-file line when side=old" },
+        "side": { "enum": ["new", "old"], "default": "new" },
+        "severity": { "enum": ["critical", "major", "minor", "trivial", "info", "refactor"] },
+        "title": { "type": "string", "minLength": 1 },
+        "evidence": { "type": "string", "minLength": 1 },
+        "fix": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  ]
+}

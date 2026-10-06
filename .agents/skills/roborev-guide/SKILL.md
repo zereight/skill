@@ -1,6 +1,8 @@
 ---
+
 name: roborev-guide
 description: Guide for using roborev continuous background code review. Use when the user asks about roborev install paths, git hooks, daemon status, review results, TUI, show/list/log commands, agent/model configuration, Codex/Claude/Pi agent settings, post-commit behavior, auto-fix, refine, or troubleshooting roborev review jobs.
+disable-model-invocation: true
 ---
 
 # roborev Guide

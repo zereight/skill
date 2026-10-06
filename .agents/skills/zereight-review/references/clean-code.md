@@ -39,6 +39,14 @@ Never report clean code issues alone as 🟠 Major or higher.
 
 - **DRY violations**: same logic copied 2+ times with no shared abstraction → flag if divergence risk is real
 - **Deep nesting**: more than 3 levels of if/loop nesting → suggest early return or extraction
+- **Negated compound conditions**: `!a && !b` forces double negation to parse; fold into a positively-named boolean
+  ```ts
+  // Bad — double negative
+  if (!isIos && !isAndroid13Plus) return
+  // Good — one negation on a positive name
+  const needsPermissionCheck = isIos || isAndroid13Plus
+  if (!needsPermissionCheck) return
+  ```
 - **Magic values**: raw numbers/strings used in logic without a named constant
 
 ---
@@ -98,6 +106,7 @@ Never report clean code issues alone as 🟠 Major or higher.
 | DRY violation, identical code, no future risk | 🔵 Trivial |
 | Component with 7+ props but clear purpose | 🔵 Trivial |
 | Effect doing 3+ unrelated things | 🟡 Minor |
+| Negated compound condition (`!a && !b`) | 🔵 Trivial |
 
 ## Do not report
 

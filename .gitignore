@@ -1,6 +1,7 @@
 .omc/
 .codegraph/
 docs/
+zereight-review.bak-*/
 
 # autocontext runtime artifacts
 runs/

@@ -1,12 +1,16 @@
 ---
 name: zereight-review
-description: Comprehensive code review skill for practical PR feedback. Use for feature, bugfix, and refactor reviews. Prioritizes correctness, edge cases, dual-path symptom fixes vs delete-a-path alternatives, logic invariants, async state, flow ownership, ponytail simplicity, motion craft, test quality, OWASP, and actionable feedback.
+description: Comprehensive code review skill for practical PR feedback. Use for feature, bugfix, and refactor reviews. Prioritizes correctness, edge cases, dual-path symptom fixes vs delete-a-path alternatives, logic invariants, async state, flow ownership, ponytail simplicity, motion craft, test quality, OWASP, AI delivery tier mapping (coordinator phase via zereight-ai-delivery-gate), and actionable feedback.
 ---
 
 # zereight-review
 
 Prioritize **correctness and risk** over style nitpicks.
 Default tone: concise, direct, actionable.
+
+**🟠 promotion rule (non-negotiable):** A control-flow hole is not a user
+bug. If the condition is a library throw, false-return, dead Activity, or
+Promise hang — paste the callee site or stay ≤🟡. See **Rule 7**.
 
 **Navigation PR rule (non-negotiable):** No navigation/back-stack finding
 without **symbol + production caller(s) + path tag + terminal step** (hop vs
@@ -39,7 +43,9 @@ Required instruction sources to load before reviewing:
 - `references/direction-alternative-gate.md` (this skill — symptom-fix vs reorder vs delete-a-path; 1-line PRs in scope)
 - `references/navigation-review-gate.md` (this skill — caller context, hop vs terminal nav diff, path tags, scenario matrix, author observation, echo dedup)
 - `references/test-review-gate.md` (this skill — test necessity, duplication/placement, slop, axis-linked gaps; RNTL lens when RN component tests)
-- `references/problem-map-output.md` (this skill — **문제 지도** final-output template: 어디/뭐/언제/유저영향/우선순위)
+- `references/problem-map-output.md` (this skill — **문제 지도** fields: 어디/뭐/언제/유저영향/우선순위)
+- `references/output-format.md` (this skill — **chat synthesis shape**)
+- `zereight-ai-delivery-gate` (`~/.agents/skills/zereight-ai-delivery-gate/SKILL.md` + `references/tiers.md` — **coordinator synthesis phase only**; A7 evidence + 4-tier relabel; no extra subagent pass)
 
 Required subagent review passes:
 
@@ -54,9 +60,9 @@ Required subagent review passes:
 | Ponytail simplicity reviewer | `reviewer` | session (`inherit`) | `ponytail-review` + `references/direction-alternative-gate.md` | yagni, duplicate orchestration, dual hook paths, shrink/delete, **sibling-path grep on target-swap** — **correctness/security out of scope** |
 | Motion craft reviewer | `reviewer` | session (`inherit`) | `review-animations` + `STANDARDS.md` | motion-only hunks; Ten Non-Negotiable Standards; Before/After/Why table + Block/Approve verdict; RN map transform/opacity=spring interruptibility=GPU; **not** general logic |
 | Test quality reviewer | `worker` | session (`inherit`) | `references/test-review-gate.md` + consolidate-test-suites + testing-anti-patterns + test-writing (+ `zereight-react-native-testing` when RN component tests) | test-only hunks; necessity (one invariant per test), duplication/placement (one owning layer), slop (mock-behavior, prod pollution, overspec), axis-linked gaps; **never 🟠 for missing tests alone** |
-| Agent orchestration reviewer | `delegate` | session (`inherit`) | `agent-skills:using-agent-skills` | whether the work was split correctly and whether any review lens is missing (thermo-nuclear, flow ownership, ponytail, motion craft, React/RN, test quality) |
+| Agent orchestration reviewer | `delegate` | session (`inherit`) | `agent-skills:using-agent-skills` | whether the work was split correctly and whether any review lens is missing (thermo-nuclear, flow ownership, ponytail, motion craft, React/RN, test quality, **AI delivery gate at coordinator phase — not a spawnable pass**) |
 | React/RN specialist reviewer | `reviewer` | session (`inherit`) | `zereight-react-native-optimizer` + react-doctor JSON + `references/navigation-review-gate.md` when nav scope | effect/render/list/animation/native perf regressions; **Skia GPU readback loops** (`makeImageSnapshot` + `readPixels` in rAF/effect); reconcile react-doctor diagnostics with diff evidence; nav findings split by caller/path |
-| Zereight coordinator | (parent) | session (parent) | this skill + `references/direction-alternative-gate.md` + `references/navigation-review-gate.md` when nav scope | three-dot diff, RED-team, verification, **A/B/C direction table**, caller/scenario gates, author observation reconcile, echo dedup, final synthesis |
+| Zereight coordinator | (parent) | session (parent) | this skill + `references/direction-alternative-gate.md` + `references/navigation-review-gate.md` when nav scope + `zereight-ai-delivery-gate` when delivery gate scope | three-dot diff, RED-team, verification, **A/B/C direction table**, caller/scenario gates, author observation reconcile, echo dedup, **AI delivery gate phase** (tier relabel + A7), final synthesis |
 
 **Flow ownership pass rule:** Spawn when the PR changes any navigable screen,
 navigator, route params, or multi-step handoff (`*Screen`, `*-screen.tsx`,
@@ -132,6 +138,13 @@ turn (e.g. “composer로 리뷰”, “fast로”).
 | --- | --- |
 | session / `inherit` | **All** ensemble passes (`reviewer`, `worker`, `delegate`) and coordinator synthesis |
 
+**Ensemble ≠ multi-model (read this before judging telemetry):**
+- Zereight spawns **many passes**, not **many models**. Every pass uses the **same** parent session slug (`inherit` → resolved runtime id).
+- Telemetry that shows `composer-2.5` (or `cursor/composer-2.5`) **N times** is **expected** when the parent is Composer 2.5 — not evidence that the ensemble failed to diversify models.
+- UI labels (`omp`, Composer chip) may differ from the **runtime slug** logged by Pi/Cursor. Always record **`parent session model: <runtime slug>`** in `검증 결과`, separate from the UI name.
+- **Multi-model review** (e.g. baseline on inherit, regression on Grok) is **out of scope** unless the user names per-pass models in the **same** turn. Do not infer a PROCESS VIOLATION from “only one model id appeared.”
+- Distinguish **model mix** from **ensemble execution**: `ensemble completed (11/11)` with one slug = success; `ensemble blocked (runtime unavailable)` or single-pass without user approval = spawn failure, not “wrong model.”
+
 ### Runtime mapping — session model is non-negotiable
 
 Every spawn must follow the **parent session model**. Do not pin a different
@@ -158,7 +171,7 @@ ensemble solely for model-id mismatch.
 1. Default: Cursor Task `model: "inherit"`; Pi = parent session model.
 2. Do **not** skip for missing `composer-2.5`.
 3. Only pass a non-`inherit` slug when the user named that model this turn.
-4. Log actual models in `검증 결과` (e.g. `reviewer ×4 (inherit / <parent>)`).
+4. Log actual models in `검증 결과`: `parent session model: <runtime slug>` plus pass counts (e.g. `reviewer ×7 (inherit / cursor/composer-2.5)`).
 
 **No model cascade on quota errors:** Do **not** configure or use
 `fallbackModels` to hop providers on failure. On **429**, rate-limit, or quota
@@ -195,10 +208,23 @@ Execution rules:
   that pass as skipped, record the error briefly, and continue synthesis from
   completed passes — do not block the final review.
 
-**Parallel spawn example (pi-subagents / `subagent` tool — parent session model):**
+**Pi batch `task` tool — `context` gate (MANDATORY):**
+
+Some runtimes expose a batch **`task`** tool whose schema requires top-level
+**`context`**. Calls with only `tasks` + `concurrency` fail with:
+`Missing context. Provide the shared background for this batch…`
+That is a **spawn contract violation** — retry with `context` before recording
+`ensemble blocked`.
+
+**`context` must include:** PR id/repo/branches/commits, review worktree path,
+three-dot diff ref, PR axis, `inherit` model policy, changed-file list or stat,
+preflight rows already run. Each `tasks[].task` stays pass-specific.
+
+**Parallel spawn example (Pi batch `task` or `subagent` — parent session model):**
 
 ```json
 {
+  "context": "PR #4429 … worktree … refs/remotes/origin/develop...refs/remotes/origin/jira/MP-3115. Axis A. Model: inherit.",
   "tasks": [
     {
       "agent": "reviewer",
@@ -259,12 +285,18 @@ parent session**, not a hard-coded Composer slug.)
 
 **Parallel spawn example (Cursor `Task` tool — session inherit):**
 
+Cursor `Task` has **no** `context` field — paste the Pi `context` block at the
+**top of `prompt`**. Use only client-whitelisted `subagent_type` values (e.g.
+`generalPurpose`, `security-review`); **`code-reviewer` is invalid** on many
+builds. Error `Subagents are not implemented by this client` →
+`ensemble blocked (runtime unavailable)` — coordinator single-pass, all axes.
+
 ```json
 {
   "subagent_type": "generalPurpose",
   "model": "inherit",
   "description": "Baseline full-diff review",
-  "prompt": "Skill: code-review. Use the parent session model (inherit). PR: ..."
+  "prompt": "SHARED CONTEXT: PR … worktree … diff … axis … inherit.\n\nPass: Baseline. Skill: code-review. …"
 }
 ```
 
@@ -284,6 +316,12 @@ request, add `PROCESS VIOLATION: <pass> used <actual-model> (expected inherit/se
 Zereight-review **always** runs the full ensemble before synthesis. Treat
 single-pass review as an exception, not the default.
 
+**Index first (parallel with metadata fetch):** build the review index per
+**Review index (graft + tgrep)** before any file reads. All passes below share
+that one worktree index: orient with `graft ask`/`skeleton`/`callers` before
+opening files, verify existence/count claims with `tgrep`. No pass rebuilds the
+index or re-explores the tree from zero.
+
 **Required execution order (after PR Identity Gate succeeds):**
 
 1. **PR Axis Gate** (A/B/C) — record in `검증 결과` before findings
@@ -298,6 +336,12 @@ single-pass review as an exception, not the default.
    `**/__tests__/**`, `**/__snapshots__/**`; see **Test pass rule**). Record
    in `검증 결과` as `test scope: yes — <files>` or `test scope: no`. No CLI;
    scope only decides whether to spawn the test pass.
+7b. **AI delivery gate scope** — in scope when the diff touches UI surface
+   (`*.tsx`, `*.jsx`, `*.vue`, `*.css`, `*.scss`, RN `*-screen.tsx`) **or**
+   the PR body / user message claims AI-assisted work or agent completion.
+   Record `delivery gate scope: yes — <reason>` / `delivery gate scope: no —
+   <reason>`. Scope decides whether Step 4 runs the **AI delivery gate phase**
+   (not a subagent). Pure server/MCP/locales-only with no agent claim → `no`.
 8. **Direction Alternative Gate** — load `references/direction-alternative-gate.md`.
    On logic PRs, draft A (PR) / B (reorder) / C (delete a path) **before**
    trusting ensemble Approve. Grep sibling identifiers. Read existing PR
@@ -318,8 +362,11 @@ single-pass review as an exception, not the default.
 11. Spawn orchestration `delegate` pass after worker/reviewer passes complete
 12. Coordinator synthesis + `검증 결과` (re-check Axis Gate, Direction
     Alternative Gate, **caller/scenario gates**, **author observations**,
-    **echo dedup** before Approve; do not promote “all passes agree” without
-    per-path evidence)
+    **echo dedup**, **Rule 7 structure vs firing** before Approve; do not
+    promote “all passes agree” without per-path evidence or a pasted throw site).
+    When **delivery gate scope** is yes: load `zereight-ai-delivery-gate` +
+    `references/tiers.md`; emit `## AI delivery gate` per that skill (tier
+    relabel of existing findings + A7 table); do **not** spawn a 12th reviewer.
 
 **Subagent spawning counts as available** when any of these exist in the runtime:
 Pi `subagent` tool, Cursor `Task` tool, `cursor_worker`, or equivalent multi-agent spawn.
@@ -339,10 +386,11 @@ When single-pass fallback is active, still:
   `zereight-react-native-optimizer` when React/RN scope,
   `references/test-review-gate.md` when test scope, and
   `references/direction-alternative-gate.md` on logic PRs,
-  `references/navigation-review-gate.md` when nav scope).
+  `references/navigation-review-gate.md` when nav scope,
+  `zereight-ai-delivery-gate` when delivery gate scope).
 - Cover every ensemble axis in one pass (including flow ownership, ponytail,
-  motion craft when in scope, test quality when in scope, and the Direction
-  Alternative A/B/C table).
+  motion craft when in scope, test quality when in scope, the Direction
+  Alternative A/B/C table, and **AI delivery gate phase** when in scope).
 - Run react-doctor, rnsec, SonarLint, and fuck-u-code prefights when applicable.
 
 **If subagent spawning IS available:** spawn every required pass. Partial
@@ -354,7 +402,7 @@ pass, note in synthesis). Completing the review from one coordinator pass alone
 
 Subagent claims are not primary evidence. A claim becomes a finding only
 after current-turn primary evidence (diff, file contents, tests, CI logs,
-rtk-grepped source, or reproducible output) confirms it.
+grepped source, or reproducible output) confirms it.
 
 Rules:
 
@@ -466,11 +514,6 @@ Review preflight safeguards:
 - If CodeGraph output is `_truncated`, stale, unresolved, or conflicts with file
   evidence, do not cite it as review evidence. Narrow the query once or fall
   back to context-mode plus file evidence.
-- RTK command rewrites can fail silently for simple read commands such as
-  `rtk rewrite "sed ..."`. If that happens, do not stall the review. Use the
-  repo-approved RTK form when the hook provides one, prefer `rtk grep` /
-  `rtk git` for searched or git commands, and keep direct file reads narrowly
-  bounded when reading required instruction or skill files.
 - If the nearest repo `AGENTS.md` is missing, do not treat that as permission to
   ignore repo instructions. Use any AGENTS instructions supplied in the current
   conversation as the repo instruction source, state that fallback, and continue.
@@ -733,6 +776,8 @@ Before labeling any finding as 🟠 Major or higher based on framework/library b
 
 If you can only say "theoretically this could..." without one of the above, demote to 🔵 Trivial or 🟡 Minor until verified.
 
+**Loophole (PR #4211):** writing the claim as fact — "when the Activity is destroyed, X throws" — without the words "theoretically" / "could" does **not** skip this rule. Unverified event E is still theoretical. Apply **Rule 7**.
+
 ### Rule 2: Detection triggers — STOP and verify
 
 When drafting a finding, if you write any of these phrases, STOP and verify:
@@ -744,6 +789,8 @@ When drafting a finding, if you write any of these phrases, STOP and verify:
 - "이 setState는 re-render를 일으켜 jank를 유발한다" (performance claim without measurement)
 - "`readPixels` / `makeImageSnapshot` in rAF or effect loop" (Skia GPU readback — **do not demote**; apply **Skia / GPU readback checks** below)
 - "`let cancelled` / `cancelledRef.current = false` at start of effect + `void …Async()`" (async effect cancellation — apply **Async effect cancellation checks**)
+- "예외 나면" / "if an exception" / "coroutine dies" / "Promise 미결" / "never resolves" / "waits forever" — **Rule 7**, even when stated as fact
+- "죽은 activity" / "stale activity" / "activity destroyed" / `isFinishing` / missing `try/catch` on `launch` / `withContext` / `RCTPromise` — **Rule 7**
 
 ### Rule 3: Verification patterns by claim type
 
@@ -755,6 +802,8 @@ When drafting a finding, if you write any of these phrases, STOP and verify:
 | List virtualization (FlashList, FlatList) | Check item count and render path |
 | Performance (re-render frequency, memo effectiveness) | Count actual trigger events in real usage, not hypothetical worst case |
 | Skia GPU readback in loop | Grep diff for `readPixels`, `makeImageSnapshot`, `requestAnimationFrame`, `useCanvasRef`, `<Canvas ref`. Trace: on-screen GPU Canvas vs CPU `Skia.Surface.Make`. Follow callers: auto-save, ghost view, `makeImageFromView`, screen entry / navigation transition |
+| Native RN `Promise` + `launch` / `withContext` | **Rule 7.** Structure = this file never `reject`s. Firing = paste the callee throw/return. RN `ReactContext.startActivityForResult` returns `false` (no throw) and re-reads `getCurrentActivity()` — it does not use a captured Activity |
+| Android `Activity` / `currentActivity` after an await | Do not assume a destroyed Activity throws. Read the SDK method + RN source (`javap` AAR if no `.kt`). Rotation often yields a *new* activity via `getCurrentActivity()` |
 
 ### Rule 4: Signal-Trigger Investigation — upstream root cause
 
@@ -803,6 +852,27 @@ Detection triggers (STOP — apply PR Axis Gate):
 - Promoting a finding only because several ensemble passes agreed, without
   independent contract evidence
 
+### Rule 7: Structure vs firing — cap 🟠
+
+A control-flow hole is not a user-facing bug.
+
+| Layer | What you proved | Max severity |
+| --- | --- | --- |
+| **Structure** | "If event E, then defect D" from *this file* (e.g. no `promise.reject` inside `launch` / `withContext`) | 🟡 defense gap |
+| **Firing** | E happens on a realistic path — callee source throws or returns the bad value, official docs, or a repro | 🟠 only if that path is user-facing |
+
+**Paste the throw/return site or stay ≤🟡.** Platform folklore ("dead Activity throws", "rotation kills the coroutine") is not firing. Ensemble echo of the hang story is not firing.
+
+**Native Promise hang (RN bridge):** missing `try/catch` around `CoroutineScope.launch` / `withContext` / a completion handler is **structure**. Before 🟠 "JS waits forever":
+
+1. Read the **exact** callee that would throw (`conversationClient`, `startActivityForResult`, vendor SDK).
+2. RN `ReactContext.startActivityForResult` returns `false` when there is no activity — it does **not** throw. Ignored `false` + `promise.resolve` is **false-success**, not a hang — still needs firing (activity actually null at that moment).
+3. No paste → max 🟡.
+
+When an 🟠+ condition is a library/runtime event (throw, false return, activity death, promise hang), `검증 결과` must include:
+`firing: <callee> → <file:line or javap> | structure-only (demoted)`
+Silence on that 🟠 = **PROCESS VIOLATION**.
+
 ### Failure cases — lessons (calibration)
 
 Document your own missed findings here to build calibration:
@@ -816,6 +886,7 @@ Document your own missed findings here to build calibration:
 - **PR #4049 / MP-2927 (CERT upsert symptom fix)**: Axis-A 1-line retarget `upsertMetadataAsync(CLIENTS.API → CERT)` because API client was created after `createApplicationIDAsync`. Ensemble ×8 Approved A: spec files used `client: CLIENTS.CERT`, init order made CERT the only live client, Nicholas’ “inject into both” was refuted via `getInitialMetadataAsync`. Later fix was create API client first and route pre-register APIs through API (CERT path removable). **Miss:** treated API-spec `client:` as architecture SSOT; skipped architecture on “trivial 1-line”; ponytail `Lean already` without sibling-caller grep; did not write B=reorder / C=delete CERT. **Fix:** **Direction Alternative Gate** (`references/direction-alternative-gate.md`) — 1-line PRs in scope; comments are hypotheses; spec `client:` is a setting.
 - **PR #4048 / MP-2924 (onboarding terms blank screen removal)**: Compared `navigate(OnboardingNavigator → hop)` with `push(Terms)` as equivalent migration; develop’s **terminal** step was `replace(Terms)`. Applied `resetTargetStack` / Fatca back-stack 🟠 to **whole PR** though `navigateToOnboardingProductTermsAsync` had **one caller** (SP6, `resume-from-stem`, end stack `[Stem,Terms]`). Ensemble ×N echoed without caller grep. Author said “back shows Home” — downrank delayed. **Fix:** **Navigation & caller-context gates** (`references/navigation-review-gate.md`) — Caller Context, 3-step Navigation Diff, path tags, Scenario Matrix, Author Observation, Echo dedup.
 - **PR #4107 phone `editable` (always-true condition filed as dead code)**: Proved the true path (formatted length capped at 12, so `<= 12` never false) and proposed `<` / deletion — but never simulated the false transition's next user action. At full (12), `false` would lock the keyboard and block deletion: the fix was a worse bug than the finding. Withdrew the finding. **Fix:** **Self-challenge gate** — condition findings need both directions plus next-action simulation.
+- **PR #4211 / BXCS-160 (Android `showChat` Promise hang)**: Filed 🟠 "revoke wait → stale Activity throws → coroutine dies → JS `await` forever". Structure (no `try/catch` on `withContext(Main)`) was real. Firing was folklore. RN `ReactContext.startActivityForResult` re-reads `getCurrentActivity()` and returns `false` (no throw). Salesforce SMI 1.11.0 `conversationClient` / `createOpenConversationIntent` only null-check `Context`. **Miss:** Rule 1 skipped because the write-up never said "theoretically" — it stated the throw as fact. **Fix:** **Rule 7** — structure ≠ firing; paste callee throw/return site or cap 🟡.
 
 ## Full-Diff Inline Comment Mindset -- MANDATORY
 
@@ -884,6 +955,28 @@ Never change the primary workspace branch for review setup.
   ```
 - Record the worktree path in `검증 결과`. If a worktree cannot be created, stop
   and ask before touching the primary workspace.
+
+### Review index (graft + tgrep) — MANDATORY
+
+Build the review index once per review worktree, in parallel with PR metadata
+fetch. Every ensemble pass reads the same index; no pass builds its own.
+
+```bash
+graft build        # structural graph only ($0, no key, no model call)
+tgrep index        # trigram index for exact-text verification
+```
+
+- `graft build --deep` is BANNED in review. All review queries (`ask`,
+  `map`, `grep`, `callers`, `skeleton`, `blast`) are structural and need no
+  model. Never spend model calls summarizing code you are about to read.
+- Graft auto-refreshes against the working tree on every query, so a
+  worktree pinned at the PR source commit never goes stale. `tgrep index`
+  runs once because the worktree is fresh per review.
+- Skip only when `git diff --stat` shows 3 or fewer files in one directory.
+  Record `index: skipped (trivial scope)` in `검증 결과`. Otherwise record
+  `index: graft ok / tgrep ok` (or the exact failure).
+- If the index cannot be built, proceed with direct reads and record the
+  gap. A broken index never blocks the review.
 
 ### PR Identity Gate — MANDATORY
 
@@ -1016,21 +1109,38 @@ Before evaluating any finding, understand the domain and conventions:
   - UI-only changes → lower severity bar
 - Check what design system components, hook wrappers, and DI patterns are in use.
 - Note any existing patterns in nearby unchanged files to distinguish "new smell" from "existing convention".
+- Orient with `graft map` (repo shape) and `graft ask` (how the touched area
+  works) before opening files. Use the answers to pick which files deserve
+  full reads in Step 3.
 
 ### Step 3: Review each changed file in detail
 
 For every file in the diff:
 
-1. Read the full file, not just the changed lines — understand the full component/module shape.
+1. Read `graft skeleton` for the file first (API surface at ~1/10 the tokens),
+   then read the full bodies of changed hunks plus their coupled regions
+   (`graft callers` for per-symbol blast radius, `graft blast --base
+   refs/remotes/origin/<target>` for PR-wide reach). Skeleton orients;
+   bodies decide. Never file a logic finding from skeleton alone.
 2. Identify the file's role (screen, hook, service, util, type, test).
 3. Apply all mandatory logic checks to that file's specific logic.
 4. Note findings scoped to that file before moving to the next.
 
-Group findings by file in the output. Do not mix findings from different files in one paragraph.
+Chat output groups by **severity**, not by file. `references/output-format.md`.
 
 ### Step 4: Synthesize and output
 
-After reviewing all files, write the final review following the output template.
+
+When `delivery gate scope: yes`, load `zereight-ai-delivery-gate` and run the
+**AI delivery gate phase** in the coordinator pass only: (1) 发布阻断 five-line
+scan from ensemble/security output, (2) map comment-worthy findings to tiers
+via `references/tiers.md` (max 5 rows), (3) A7 table for author/agent claims vs
+evidence. Skip the `## AI delivery gate` section when scope is no; record in
+`검증 결과`.
+
+Write the final review following `references/output-format.md`.
+**PROCESS VIOLATION:** opening with summary, dumping the old 10-section wall,
+or skipping the first-line action / last-line next action.
 
 ---
 
@@ -1454,33 +1564,38 @@ Default final review output must be Korean unless the user explicitly asks for a
 
 Write findings in plain Korean, not terse English review jargon. Keep technical terms only when needed, and explain them briefly.
 
-Use this output order:
-1. `전체 요약`
-2. `좋은 점`
-3. `문제 지도` — **required** on logic PRs when there is any comment-worthy
+Subagent dumps stay complete. Posted PR comments stay `zereight-review-comments`.
+
+Use this output order (skip the old 10-section wall):
+1. **Line 1 = next action** — `file:line` + verb, or `머지 가능`. No summary opener.
+2. **Line 2 = 한 줄 판정 + 시간 추정** — Approve / Approve with comments /
+   Request changes, plus a concrete duration.
+3. `지금 할 일` — numbered, max 5, severity order. Remainder as `외 N개`.
+4. `문제 지도` — **required** on logic PRs when there is any comment-worthy
    finding (🟠+ or actionable 🟡). Follow `references/problem-map-output.md`:
    per-issue **어디** (`file:line` + short citation) · **뭐가 문제냐** · **언제
    터지냐** · **유저/앱이 보는 것** · **최소 수정**; then **문제 아닌 것** table
    and **우선순위 한 장**. If no findings: one line `문제 지도: 해당 없음`.
-   Do **not** duplicate the same detail in `리뷰 코멘트`.
-4. `리뷰 코멘트` — optional short bullets only when `문제 지도` does not cover
-   cross-cutting context; skip file-by-file re-listing already in `문제 지도`
+   Same items as `지금 할 일`. Do **not** add a second finding list.
 5. `방향 대안` — **required** on logic PRs (even 1-line). A/B/C table from
    `references/direction-alternative-gate.md`. If recommending the PR as-is,
    still name B and C and why they lose. Silence = PROCESS VIOLATION.
 6. `구조·역할 관점` — **required** when flow ownership pass ran or screen/flow
-   scope triggered (even if no findings: state data owner + blast radius in 3–5
-   lines). Include: data owner, upstream prepare vs target-owned fetch, RN
-   `preload` applicability, requirement-change blast radius.
-7. `모션·애니메이션 관점` — **required** when motion craft pass ran (even if
-   motion Approve: 3–5 lines + motion verdict `Block`/`Approve`). Summarize top
-   Before→After fixes from the motion table; note feel-check gaps (slow motion /
-   real device) when code-only review.
-8. `테스트 관점` — **required** when test pass ran (even if clean: 3–5 lines +
-   per-axis verdict `necessity/duplication/slop/gaps`). List UNNAMABLE tests,
-   merged duplicates, top gaps; note RNTL lens `applied (v13|v14)` / `n/a`.
-9. `파일별 리뷰 결과`
-10. `검증 결과`
+   scope triggered **and** it changes a merge decision (else skip). 3 lines:
+   data owner, upstream prepare vs target-owned fetch, blast radius.
+7. `모션·애니메이션 관점` — **required** when motion craft pass ran **and**
+   the motion verdict is Block, or a Before→After changes the patch. Else skip.
+   Motion verdict `Block`/`Approve` still belongs in `검증 결과`.
+8. `테스트 관점` — **required** when test pass ran **and** an axis is not
+   clean. Else skip. Per-axis verdict still belongs in `검증 결과`.
+9. `AI delivery gate` — **required** when `delivery gate scope: yes`. Follow
+   `zereight-ai-delivery-gate` block shape (发布阻断 scan, tier table ≤5,
+   A7 구현/검증/미검증). Else omit section; record skip in `검증 결과`.
+10. `검증 결과` — compact table. Not the last line.
+11. **Last line = Next:** one action under two minutes.
+
+Skip unless the user asks: `전체 요약` as a section, `좋은 점`, `리뷰 코멘트`,
+`파일별 리뷰 결과`, closing pleasantries.
 
 In `검증 결과`, include **all** of the following rows (silence = **PROCESS VIOLATION**):
 
@@ -1516,6 +1631,14 @@ In `검증 결과`, include **all** of the following rows (silence = **PROCESS V
 | Skipped — failure | `review-animations pass skipped (429 — <reason>)` or covered in single-pass fallback |
 
 - **test scope** row — `test scope: yes — <files>` / `test scope: no` (from step 7 Test scope gate). Silence on PRs with test hunks = **PROCESS VIOLATION**.
+- **delivery gate scope** row — `delivery gate scope: yes — <reason>` / `delivery gate scope: no — <reason>` (from step 7b). Silence = **PROCESS VIOLATION**.
+- **AI delivery gate phase** row:
+
+| Result | Wording |
+| --- | --- |
+| Ran | `AI delivery gate phase completed` + any open 发布阻断 item |
+| Skipped | `AI delivery gate phase: skipped (no UI / no agent claim)` |
+
 - **test review** row:
 
 | Result | Wording |
@@ -1572,6 +1695,7 @@ succeeds, run it or explicitly skip with a PR-scoped reason (e.g. assets-only).
 
 Never omit the **PR axis**, **direction alternative**, **ensemble**, **motion scope**, **review-animations**
 (when motion scope yes), **test scope**, **test review** (when test scope yes),
+**delivery gate scope**, **AI delivery gate phase** (when delivery gate scope yes),
 **ymnne** (when Effect scope yes), **react-doctor**, **rnsec**, or **sonarlint** rows.
 A final review without them is incomplete even when findings look thorough.
 
@@ -1582,6 +1706,12 @@ A final review without them is incomplete even when findings look thorough.
 - **scenario matrix** — `scenario matrix: filled | rows=N | 🟠 backed rows=M` or `scenario matrix: skipped`
 - **author observation** — `author observation reconciled: <withdrawn/kept per path>` or `none`
 - **echo dedup** — `echo dedup: <finding> promoted|demoted (N-agent echo)` or `none`
+
+**Firing row** (when any 🟠+ condition is a library/runtime event — throw,
+false-return, activity death, promise hang — silence = PROCESS VIOLATION):
+
+- `firing: <callee> → <file:line or javap> | structure-only (demoted)`
+- Skip the row when no 🟠 depends on such an event.
 
 For each finding, use these sections:
 - 위치
@@ -1610,6 +1740,8 @@ Do not provide only an English-style table. The final synthesis must be understa
   do not refute from theory alone (`references/navigation-review-gate.md`).
 - **Ensemble agreement ≠ evidence** for navigation/stack claims. Require caller
   table + scenario row or author/device verification before 🟠+.
+- **Structure ≠ firing** for throw/hang/`stale activity` claims. Paste the callee
+  site or cap 🟡 — **Rule 7**. Ensemble echo of "JS waits forever" is not firing.
 
 ## Quick heuristics
 
@@ -1628,6 +1760,7 @@ Do not provide only an English-style table. The final synthesis must be understa
   not hop `navigate` vs terminal `push` (`references/navigation-review-gate.md`).
 - If Skia `readPixels` or `makeImageSnapshot` appears inside rAF/effect/poll loop on a GPU `<Canvas ref>`, treat as 🟠 until refactored to 1× CPU bake or proven 1× offscreen snapshot — do not wait for Datadog.
 - If the diff adds or changes tests: demand one invariant per test; UNNAMABLE → delete candidate; missing tests alone never reach 🟠 — see `references/test-review-gate.md`.
+- If the finding is "exception → Promise hang / `await` forever", that is structure. Paste the callee throw/return site or stay ≤🟡 — **Rule 7**.
 
 ## Example finding (reference style)
 

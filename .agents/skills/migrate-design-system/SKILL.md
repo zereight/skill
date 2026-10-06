@@ -1,6 +1,8 @@
 ---
+
 name: migrate-design-system
 description: Map this token system to or from any external design system (Material Design 3, Apple HIG, Fluent, Carbon, Ant, shadcn/ui, Radix, Chakra, Mantine, Bootstrap…) — adopt their look, build on their stack, or migrate between systems. Use when the user mentions interop, migration, or a specific design-system/component-library bridge.
+disable-model-invocation: true
 ---
 
 # Skill: Migrate / Interop Design System
