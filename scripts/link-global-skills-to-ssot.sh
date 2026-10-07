@@ -32,6 +32,11 @@ for src in "$SSOT"/*; do
   [[ -f "$src/SKILL.md" ]] || continue
 
   mkdir -p "$AGENTS"
+  # A real directory under ~/.agents/skills is the global original (SSOT); the repo copy is a mirror.
+  if [[ -d "$AGENTS/$name" && ! -L "$AGENTS/$name" ]]; then
+    echo "skip $AGENTS/$name (global original, not a symlink)"
+    continue
+  fi
   rm -rf "$AGENTS/$name"
   ln -sfn "$src" "$AGENTS/$name"
   linked=$((linked + 1))

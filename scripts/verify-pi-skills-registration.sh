@@ -72,6 +72,8 @@ done < <(list_ssot_skills)
 [[ ${#SSOT_NAMES[@]} -gt 0 ]] || tooling_error "no skills under $SSOT"
 
 for name in "${SSOT_NAMES[@]}"; do
+  # Real directory under ~/.agents/skills = global original (repo holds a mirror).
+  [[ -d "$GLOBAL_AGENTS/$name" && ! -L "$GLOBAL_AGENTS/$name" ]] && continue
   want="$(realpath_safe "$SSOT/$name")"
   check_symlink_target "global-symlink" "$GLOBAL_AGENTS/$name" "$want" \
     "bash scripts/link-global-skills-to-ssot.sh"
