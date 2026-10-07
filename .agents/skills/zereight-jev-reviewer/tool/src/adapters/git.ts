@@ -1,5 +1,5 @@
-// Git adapter: discovers changed source files under a scope and returns each
-// one with a unified diff. Untracked files are rendered as all-additions.
+// Git adapter: discovers changed files under a scope and returns each source file with a
+// unified diff. Untracked files are rendered as all-additions.
 import { execFileSync } from "node:child_process";
 import { readFileSync, realpathSync } from "node:fs";
 import { relative, resolve } from "node:path";
@@ -20,7 +20,7 @@ function lines(output: string): string[] {
 
 // JEV_BASE=origin/develop reviews the branch as a PR (three-dot diff against
 // the merge base, untracked files ignored). Unset reviews the working tree.
-export function changedFiles(scope: string): ChangedFile[] {
+function changedPaths(scope: string) {
   const realScope = realpathSync(scope);
   const repoRoot = git(realScope, ["rev-parse", "--show-toplevel"]).trim();
   const relativeScope = relative(repoRoot, realScope) || ".";
@@ -28,28 +28,27 @@ export function changedFiles(scope: string): ChangedFile[] {
   const range = base ? base + "...HEAD" : "HEAD";
 
   const tracked = lines(
-    git(repoRoot, [
-      "diff",
-      range,
-      "--name-only",
-      "--diff-filter=ACMRTUXB",
-      "--",
-      relativeScope,
-    ]),
+    git(repoRoot, ["diff", range, "--name-only", "--diff-filter=ACMRTUXB", "--", relativeScope]),
   );
   const untracked = base
     ? []
     : lines(git(repoRoot, ["ls-files", "--others", "--exclude-standard", "--", relativeScope]));
+  return { repoRoot, range, untracked: new Set(untracked), paths: [...new Set([...tracked, ...untracked])] };
+}
 
-  const untrackedSet = new Set(untracked);
-  const paths = [...new Set([...tracked, ...untracked])].filter((path) =>
-    SOURCE_FILE.test(path),
-  );
+export function changedFiles(scope: string): ChangedFile[] {
+  const { repoRoot, range, untracked, paths } = changedPaths(scope);
+  return paths
+    .filter((path) => SOURCE_FILE.test(path))
+    .map((path) => ({
+      path,
+      patch: untracked.has(path)
+        ? patchForNewFile(readFileSync(resolve(repoRoot, path), "utf8"))
+        : git(repoRoot, ["diff", range, "--unified=3", "--", path]),
+    }));
+}
 
-  return paths.map((path) => ({
-    path,
-    patch: untrackedSet.has(path)
-      ? patchForNewFile(readFileSync(resolve(repoRoot, path), "utf8"))
-      : git(repoRoot, ["diff", range, "--unified=3", "--", path]),
-  }));
+// Changed files Jev does not screen, so the report can say they were not looked at.
+export function nonSourcePaths(scope: string): string[] {
+  return changedPaths(scope).paths.filter((path) => !SOURCE_FILE.test(path));
 }

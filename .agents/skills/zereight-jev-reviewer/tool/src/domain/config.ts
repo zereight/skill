@@ -15,6 +15,15 @@ export const MIN_LOCATION_CONFIDENCE = 0.55;
 export const MAX_FOLLOW_UPS = 8;
 export const MAX_PROFILES = 5;
 export const CONCURRENCY = 3;
+// Files handed to the generative review step, ranked by their highest cell.
+export const MAX_REVIEW_TARGETS = 5;
+export const MAX_IMPORTERS = 15;
+export const MAX_SIBLINGS = 20;
+// Re-export-only index files followed per hop before giving up.
+export const MAX_BARREL_DEPTH = 3;
+// Jev reads 32k tokens (state plus questions); patches past this size are skipped, not truncated.
+export const MAX_PATCH_CHARS = 70_000;
+export const MAX_LENSES_PER_FILE = 4;
 
 export const SOURCE_FILE = /\.(?:[cm]?[jt]sx?)$/;
 export const TEST_FILE = /(?:^|\/)(?:tests?|__tests__)(?:\/|$)|\.(?:spec|test)\.[cm]?[jt]sx?$/;
@@ -25,6 +34,7 @@ export const dimensions = {
   reliability: "The code can cause a crash, race, leak, deadlock, or poor failure recovery.",
   compatibility: "The code can break a caller, persisted format, protocol, or public behavior.",
   testGap: "Important behavior lacks adequate targeted test evidence.",
+  pattern: "The change matches a known bug pattern described by a lens file.",
 } as const;
 
 export type Dimension = keyof typeof dimensions;
@@ -35,6 +45,7 @@ export const dimensionMetadata: Array<{ key: Dimension; label: string; short: st
   { key: "reliability", label: "Reliability", short: "Rel" },
   { key: "compatibility", label: "Compatibility", short: "Compat" },
   { key: "testGap", label: "Test gap", short: "Tests" },
+  { key: "pattern", label: "Lens pattern", short: "Lens" },
 ];
 
 export const mechanisms = {
@@ -77,6 +88,10 @@ export const mechanisms = {
     integration: "An interaction between components lacks coverage",
     other: "Another concrete test gap",
     noIssue: "The selected evidence does not support a concrete test gap",
+  },
+  pattern: {
+    matches: "The selected evidence exhibits the lens pattern",
+    noIssue: "The selected evidence does not exhibit the lens pattern",
   },
 } as const satisfies Record<Dimension, Record<string, string>>;
 
