@@ -1,7 +1,7 @@
 # Jev Review
 
 > **zereight fork:** vendored from [devagrawal09/jev-review](https://github.com/devagrawal09/jev-review) @ `31f8960` (MIT).
-> `TypeSafeClient` is replaced by `src/adapters/openrouter-system-one.ts` (OpenRouter `typesafe/jev-router`, key `OPENROUTER_API_KEY`).
+> The TypeSafe SDK is pointed at OpenRouter's System One API (`src/adapters/jev-system-one.ts`, default, model `jev-1.13`, key `OPENROUTER_API_KEY`). `JEV_PROVIDER=cursor` swaps in Cursor provider models (`cursor-system-one.ts`).
 > `JEV_BASE=<ref>` reviews `<ref>...HEAD`. See `../SKILL.md`.
 
 A small code-review workflow built with [TypeSafe Jev](https://typesafe.ai). It can review a Git diff or scan a complete codebase, follows the strongest structured signals through focused model calls, and presents the result in a quiet local dashboard.

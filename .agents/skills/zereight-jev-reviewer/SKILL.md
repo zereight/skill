@@ -1,8 +1,8 @@
 ---
 name: zereight-jev-reviewer
 description: >-
-  Standalone PR/diff code review for JS/TS built on TypeSafe Jev
-  via OpenRouter (typesafe/jev-router). Staged pipeline: risk matrix per file,
+  Standalone PR/diff code review for JS/TS. Staged judgment pipeline from
+  jev-review, run on TypeSafe Jev (typesafe/jev-1.13 via OpenRouter). Risk matrix per file,
   hunk location, mechanism, severity, owner routing, then agent verification
   against real code. Replaces zereight-review; no subagent ensemble. Use for
   "jev로 리뷰", PR review, diff review, /zereight-jev-reviewer.
@@ -13,7 +13,11 @@ disable-model-invocation: true
 
 새 리뷰 스킬이며 `zereight-review`와 의존 관계가 없다. 파이프라인의 판단 단계는 `tool/`의 스크립트가 맡고,
 에이전트는 마지막에 후보를 코드로 검증해 최종 리뷰를 작성한다.
-토대는 [jev-review](https://github.com/devagrawal09/jev-review) (MIT)이고 TypeSafe 클라이언트를 OpenRouter 어댓터로 교체했다.
+토대는 [jev-review](https://github.com/devagrawal09/jev-review) (MIT)이다.
+판단 모델은 **`typesafe/jev-1.13`**(진짜 Jev)이며 OpenRouter의 System One API
+(`https://openrouter.ai/api/v1/systemone`)를 공식 TypeSafe SDK로 호출한다. 별도의 TypeSafe 계정은 필요 없고
+OpenRouter 키만 쓴다. `jev-router`(채팅 라우터)는 사용하지 않는다.
+`JEV_PROVIDER=cursor`로 Cursor provider 모델(예: `glm-5p3-flash`)을 대신 쓸 수도 있다(아래 참고).
 
 ## Workflow
 
@@ -57,18 +61,25 @@ testGap은 테스트 부재만으로 🟠 이상으로 올리지 않는다. 라�
 
 | Var | Default | Note |
 | --- | --- | --- |
-| `OPENROUTER_API_KEY` | — | 필수 |
+| `JEV_PROVIDER` | `jev` | `jev`(진짜 Jev) 또는 `cursor`(Cursor 모델이 대신 판단) |
+| `OPENROUTER_API_KEY` | — | `jev` 필수 |
 | `JEV_BASE` | unset | `<base>...HEAD` |
-| `JEV_MODEL` | `typesafe/jev-router` | `json_schema` 지원 모델이면 교체 가능 |
-| `JEV_REASONING_EFFORT` | router 결정 | `low`로 토큰 절약 |
-| `JEV_MAX_TOKENS` | `6000` | "Empty completion"이 나오면 증가 |
+| `JEV_MODEL` | jev: `jev-1.13` / cursor: `glm-5p3-flash` | jev는 `jev-latest`도 가능, cursor는 `cursor/` 접두어 허용 |
+| `JEV_BASE_URL` | `https://openrouter.ai/api` | jev 전용 |
+| `JEV_MODEL_PARAMS` | unset | cursor 전용. `reasoning_effort=low`처럼 `id=value` 쉼표 구분 |
+| `CURSOR_API_KEY` | Pi `auth.json`의 cursor 키 | cursor 전용 |
 
 최초 1회: `cd ~/.agents/skills/zereight-jev-reviewer/tool && npm install` (Node 24+).
 
 ## 알려진 한계 (2026-10-07 검증)
 
-- `jev-router`는 라우터다. 관찰된 라우팅은 `deepseek/deepseek-v4.1-flash`(Together)였다.
-- logprobs가 앞부분 토큰만 반환되어 실제로는 모델이 적은 확률을 쓴다. 값이 0.8~0.99로 높아
-  `SCREEN_THRESHOLD = 0.7`(`tool/src/domain/config.ts`)이 너무 느슨하다. 실제 PR로 보정이 필요하다.
+- **Jev 컨텍스트는 32,000 토큰**이다(state + 질문). patch가 매우 큰 파일은 호출이 실패할 수 있어 파일 크기를
+  확인해야 한다. 출력 토큰은 무료이고 입력은 100만 토큰당 약 $0.042다.
+- Jev는 텍스트·근거를 반환하지 않는다. 확률과 선택만 나오므로 "왜"는 3단계 검증에서 에이전트가 코드로 채운다.
+- 측정(2026-10-07, 같은 PR #3546 diff, JS/TS 18파일, 호출 39회): Jev `jev-1.13` **6초 / $0.0021 / 후보 3건**.
+  비교용으로 이전에 deepseek 경유(`jev-router`)는 86초 / $0.086 / 후보 4건이었다.
+- `JEV_PROVIDER=cursor`는 Cursor가 logprobs를 반환하지 않아 확률이 모델의 자기 보고이고 값이 높게 나온다
+  (0.6~0.97). 호출마다 입력 토큰이 약 7k 붙고(구독 한도 차감) 1파일 기준 `glm-5p3-flash` 46초, `composer-2.5` 99초다.
+- `SCREEN_THRESHOLD = 0.7`(`tool/src/domain/config.ts`)은 실제 PR 여러 건으로 보정이 필요하다.
 - 판단 근거는 patch와 변경된 테스트뿐이다. caller/navigation 맥락은 3단계 검증에서 에이전트가 채운다.
 - JS/TS 만 대상이다(native, locale, asset 제외). 1파일 기준 약 90초.

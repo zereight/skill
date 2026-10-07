@@ -126,7 +126,9 @@ export default function jevReviewExtension(pi: ExtensionAPI) {
 		}),
 
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
-			if (!process.env.OPENROUTER_API_KEY) throw new Error("OPENROUTER_API_KEY is not set");
+			if ((process.env.JEV_PROVIDER ?? "jev") === "jev" && !process.env.OPENROUTER_API_KEY) {
+				throw new Error("OPENROUTER_API_KEY is not set (JEV_PROVIDER=jev)");
+			}
 			if (!existsSync(join(TOOL_DIR, "node_modules"))) {
 				throw new Error(`Run once: cd ${TOOL_DIR} && npm install`);
 			}

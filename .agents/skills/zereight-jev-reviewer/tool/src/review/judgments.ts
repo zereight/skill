@@ -1,6 +1,6 @@
 // Change-review judgments. Every call is narrow and receives patch evidence.
 import { choice, noul, score } from "@typesafe-ai/sdk";
-import { OpenRouterSystemOneClient } from "../adapters/openrouter-system-one.ts";
+import { createSystemOneClient } from "../adapters/system-one-factory.ts";
 import {
   BLOCKING_SEVERITY,
   type Dimension,
@@ -21,7 +21,7 @@ import type {
   Signal,
 } from "../domain/types.ts";
 
-const client = new OpenRouterSystemOneClient();
+const client = createSystemOneClient();
 
 const changeTypes = {
   behavior: "Adds or changes runtime behavior",

@@ -1,5 +1,5 @@
 import { relative, resolve } from "node:path";
-import { routedModelSummary } from "../adapters/openrouter-system-one.ts";
+import { routedModelSummary } from "../adapters/system-one.ts";
 import { reportPath, saveReport } from "../adapters/report-store.ts";
 import type { ReviewReport } from "../domain/types.ts";
 import type { Log } from "../review/workflow.ts";

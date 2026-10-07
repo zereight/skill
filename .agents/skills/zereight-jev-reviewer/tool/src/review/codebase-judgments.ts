@@ -1,7 +1,7 @@
 // Codebase-scan judgments. These ask whether an issue exists in complete
 // source, rather than whether a patch introduced one.
 import { choice, noul, score } from "@typesafe-ai/sdk";
-import { OpenRouterSystemOneClient } from "../adapters/openrouter-system-one.ts";
+import { createSystemOneClient } from "../adapters/system-one-factory.ts";
 import { basename, dirname } from "node:path";
 import {
   BLOCKING_SEVERITY,
@@ -22,7 +22,7 @@ import type {
   SourceFile,
 } from "../domain/types.ts";
 
-const client = new OpenRouterSystemOneClient();
+const client = createSystemOneClient();
 const REGION_LINES = 80;
 const SCREEN_REGION_LINES = 160;
 const MAX_RELATED_TESTS = 4;
