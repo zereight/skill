@@ -256,7 +256,7 @@ After posting:
 | Skill | Role |
 | --- | --- |
 | `zereight-mode` | App conventions for fix snippets |
-| `app-jira` | Jira scope only; not for PR comment posting |
+| `jira` | Jira scope only; not for PR comment posting |
 
 ---
 
