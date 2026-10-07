@@ -6,7 +6,7 @@ removed first and only justified keeps remain when the lint lands.
 
 ## Scope trigger
 
-Run when the diff adds or touches `useEffect` / `useBankXEffect` /
+Run when the diff adds or touches `useEffect` / `useAppEffect` /
 `useBackgroundEffect` (or the repo's equivalent Effect wrappers) in `*.ts` /
 `*.tsx`, excluding `**/*.test.*`, `**/__snapshots__/**`, `**/locales/**`,
 `**/*.stories.*`. Otherwise state
@@ -17,14 +17,14 @@ Run when the diff adds or touches `useEffect` / `useBankXEffect` /
 `eslint-plugin-react-you-might-not-need-an-effect` detects **only**
 `useEffect` / `React.useEffect` calls. It has **no custom-hook option**
 (verified against README + dist source). A repo that wraps Effects
-(e.g. `useBankXEffect`) gets ~zero findings on a naive run — the lint is dead
+(e.g. `useAppEffect`) gets ~zero findings on a naive run — the lint is dead
 unless the wrapper is mapped. Every pattern in
 `references/react-effect-guidelines.md` applies to the wrappers equally.
 
 ## Procedure
 
 1. **Scope grep** the diff for Effect-writer hunks:
-   `useEffect|useBankXEffect|useBackgroundEffect` (adjust wrapper names per repo;
+   `useEffect|useAppEffect|useBackgroundEffect` (adjust wrapper names per repo;
    check `.eslintrc` `react-hooks.additionalEffectHooks` for the local list).
 2. **Run the mapped check.** Temporarily install the plugin
    (`npm install --no-save eslint-plugin-react-you-might-not-need-an-effect`),

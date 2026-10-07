@@ -113,7 +113,7 @@ history, not a todo list that empties out.
 
 **Promote to ticket** — only on explicit request. This skill does not push
 to Jira/GitHub/Linear on its own. If asked, hand the row's content to
-whatever ticketing skill is already in play (e.g. `bankx-jira` in this repo)
+whatever ticketing skill is already in play (e.g. `jira` in this repo)
 and let that skill own the actual API call and consent gate.
 
 ## Concurrency (multi-agent appends)

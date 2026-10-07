@@ -120,7 +120,7 @@ if global_agents in norm:
 
 only_project = bool(norm) and all(".cursor/skills" in path for path in norm)
 if only_project:
-    print("BANKX_ONLY")
+    print("PROJECT_ONLY")
 elif data.get("includeDefaults") is False:
     print("MISSING_WITH_INCLUDE_DEFAULTS_FALSE")
 else:
@@ -130,9 +130,9 @@ PY
 
 case "$PI_CHECK" in
   OK) ;;
-  BANKX_ONLY)
+  PROJECT_ONLY)
     fail "pi-settings" \
-      "$PI_SETTINGS skills[] has project paths only (e.g. BankX .cursor/skills), not $GLOBAL_AGENTS" \
+      "$PI_SETTINGS skills[] has project paths only (e.g. project .cursor/skills), not $GLOBAL_AGENTS" \
       "bash scripts/link-global-skills-to-ssot.sh && restart Pi"
     ;;
   MISSING_WITH_INCLUDE_DEFAULTS_FALSE | MISSING_SKILLS_ARRAY | MISSING)

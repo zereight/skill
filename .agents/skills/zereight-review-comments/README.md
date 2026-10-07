@@ -25,7 +25,7 @@ After `zereight-review`, when the user explicitly asks to post:
 | --- | --- |
 | `zereight-review` | Findings (chat-only by default) |
 | `zereight-review-comments` | Post to Bitbucket |
-| `zereight-mode` | BankX fix-snippet conventions |
+| `zereight-mode` | App fix-snippet conventions |
 
 ## Critical gotcha
 

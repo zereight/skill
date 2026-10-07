@@ -75,7 +75,7 @@ const maxAttemptCount = usePropOverride ? maxAttemptCountProp : (mismatchedCount
 **Impact:** PIN verification is submitted against a session that has already ended, causing a guaranteed authorization failure.
 **Evidence:** `use-pin-verification-sheet.ts:38`
 ```ts
-const handleSubmitAsync = useBankXCallback(async (pin: string) => {
+const handleSubmitAsync = useAppCallback(async (pin: string) => {
   await verifyPin({ authorizationId, pin })  // ← captured at first render
 }, [])  // ← missing authorizationId in deps
 ```

@@ -6,7 +6,7 @@ Reference: [You Might Not Need an Effect](https://react.dev/learn/you-might-not-
 If there is no external system involved, you probably don't need an Effect.
 
 **Wrapper rule:** every pattern below applies equally to Effect wrappers
-(`useBankXEffect`, `useBackgroundEffect`, `useBankXFocusEffect`). Review the
+(`useAppEffect`, `useBackgroundEffect`, `useAppFocusEffect`). Review the
 wrapper call, not just bare `useEffect` — `eslint-plugin-react-you-might-not-need-an-effect`
 sees only `useEffect` and has no custom-hook option, so a naive plugin run
 reports ~zero findings on wrapper-heavy codebases. See
@@ -254,7 +254,7 @@ finishes (e.g. modal `visible: true → false → true`).
 
 ```ts
 // 🔴 Bad — stale async wins after re-open
-useBankXEffect(() => {
+useAppEffect(() => {
   cancelledRef.current = false
   const run = async () => {
     await dismissKeyboardAsync()
@@ -267,7 +267,7 @@ useBankXEffect(() => {
 
 // ✅ Good — generation token (no let)
 const generationRef = useRef(0)
-useBankXEffect(() => {
+useAppEffect(() => {
   const generation = generationRef.current + 1
   generationRef.current = generation
   const run = async () => {

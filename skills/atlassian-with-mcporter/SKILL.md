@@ -1,6 +1,6 @@
 ---
 name: atlassian-with-mcporter
-description: Read or verify Atlassian Jira and Confluence items through mcporter. Use for bankx.atlassian.net links, Jira issue keys, Confluence pages, Jira ticket validation, JQL/CQL searches, or when another Jira MCP wrapper fails.
+description: Read or verify Atlassian Jira and Confluence items through mcporter. Use for your-site.atlassian.net links, Jira issue keys, Confluence pages, Jira ticket validation, JQL/CQL searches, or when another Jira MCP wrapper fails.
 ---
 
 # Atlassian With Mcporter
@@ -24,7 +24,7 @@ Use `mcporter` first for Atlassian work. Do not conclude that an issue/page is m
 4. For Jira issues, use the Atlassian MCP JQL tool:
    ```bash
    /Users/tao.exe/.nvm/versions/node/v22.22.2/bin/mcporter call atlassian.searchJiraIssuesUsingJql \
-     cloudId=bankx.atlassian.net \
+     cloudId=your-site.atlassian.net \
      jql='key = ISSUE-123' \
      maxResults=10 \
      fields='["summary","description","status","issuetype","priority","created","updated","project","assignee","reporter"]' \

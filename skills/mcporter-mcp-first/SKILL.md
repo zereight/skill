@@ -62,7 +62,7 @@ Use server `bitbucket`.
 4. Source files:
    `bb_get_file(workspaceSlug=bank-x, repoSlug=mobile-app-workspace, filePath=<path>, revision=<commit>)`
 
-BankX common identifiers:
+App common identifiers:
 - `workspaceSlug=bank-x`
 - `repoSlug=mobile-app-workspace`
 - `prId` is a string, not integer

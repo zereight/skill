@@ -19,7 +19,7 @@ Load repo `CLAUDE.md` / `LLM.md` **Data layering pattern** when present
 - Guide → detail / list → detail / wizard step handoff
 - `navigation.preload`, `replace`, `push` with params that carry fetched data
 - `initial*` / `prepared*` / `prepare*` props or nav params
-- Upstream screen calls `*-api` / `BANKX_API` before navigating downstream
+- Upstream screen calls `*-api` / `APP_API` before navigating downstream
 - Duplicate similar handlers across two screens (e.g. onboarding + settings)
 
 Skip when the PR is assets, locales, tests-only, or a single-file util with no
@@ -67,7 +67,7 @@ Or: guide CTA only triggers navigation; target shows loading until ready.
 
 | Layer | Guide may do | Target should do |
 | --- | --- | --- |
-| Network | ❌ `BANKX_API` in screen file | ✅ via `*-api.ts` / hook |
+| Network | ❌ `APP_API` in screen file | ✅ via `*-api.ts` / hook |
 | Prepare orchestration | ⚠️ CTA-time prepare (trade-off) | ✅ ongoing fetch / polling |
 | Display state | ❌ | ✅ hook + UI |
 | Stale async guards | ⚠️ if prepare stays on guide | ✅ or shared hook |
@@ -88,7 +88,7 @@ frame.
 
 **Clean pattern:**
 
-1. Guide: `preload(screen)` + `replace(screen)` — **no** `BANKX_API` in guide
+1. Guide: `preload(screen)` + `replace(screen)` — **no** `APP_API` in guide
 2. Target: loading UI while `verificationDetail` (or equivalent) unset
 3. Target hook: fetch on mount (including preload mount)
 

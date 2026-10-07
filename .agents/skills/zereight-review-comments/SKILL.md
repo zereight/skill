@@ -73,7 +73,7 @@ Before each post batch:
 | --- | --- |
 | PR `Updated` after your last review | Re-read diff + full changed files |
 | Finding references removed code | Drop or rewrite |
-| Author fixed issue (e.g. `useBankXEffect`) | Skip that comment; optional ✅ reply on thread |
+| Author fixed issue (e.g. `useAppEffect`) | Skip that comment; optional ✅ reply on thread |
 | Line shifted | Re-resolve anchor with `git show … \| rg -n` |
 
 Prefer anchoring on **lines in the current diff hunk** (`+` lines). Unchanged context
@@ -146,7 +146,7 @@ Every posted inline comment uses this structure.
 
 - Include **copy-pasteable code** for non-obvious fixes
 - Smallest safe change; no drive-by refactors
-- BankX conventions: `useBankXCallback` / `useBankXEffect`, no `as`, design tokens
+- App conventions: `useAppCallback` / `useAppEffect`, no `as`, design tokens
 
 ---
 
@@ -227,13 +227,13 @@ From zereight synthesis, post only **comment-worthy** items:
 
 ---
 
-## BankX-specific anchors (common)
+## App-specific anchors (common)
 
 | Area | Typical file | Anchor near |
 | --- | --- | --- |
-| Date picker bounds | `bankx-wheel-date-picker.tsx` | handler or `useMemo` data |
-| Hook convention | `bankx-wheel-column-picker.tsx` | new `useBankXEffect` / `useEffect` |
-| Input wiring | `bankx-date-picker-input.tsx` | component swap line |
+| Date picker bounds | `app-wheel-date-picker.tsx` | handler or `useMemo` data |
+| Hook convention | `app-wheel-column-picker.tsx` | new `useAppEffect` / `useEffect` |
+| Input wiring | `app-date-picker-input.tsx` | component swap line |
 
 Always re-verify line numbers on the **current** PR branch.
 
@@ -255,8 +255,8 @@ After posting:
 
 | Skill | Role |
 | --- | --- |
-| `zereight-mode` | BankX conventions for fix snippets |
-| `bankx-jira` | Jira scope only; not for PR comment posting |
+| `zereight-mode` | App conventions for fix snippets |
+| `jira` | Jira scope only; not for PR comment posting |
 
 ---
 

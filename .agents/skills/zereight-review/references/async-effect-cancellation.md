@@ -1,10 +1,10 @@
 # Async Effect Cancellation — Generation Token vs Boolean
 
-Use when reviewing `useEffect` / `useBankXEffect` that starts an **async IIFE**
+Use when reviewing `useEffect` / `useAppEffect` that starts an **async IIFE**
 (`void fooAsync()`, `const run = async () => …`) and must ignore results after
 cleanup or when dependencies re-run.
 
-**SSOT example (BankX):** `packages/design-system-components/src/bankx-modal.tsx`
+**SSOT example (App):** `packages/design-system-components/src/app-modal.tsx`
 — `visible=true` → `await dismissKeyboardBeforeModalAsync()` → fade-in only if
 the captured generation still matches.
 
@@ -14,7 +14,7 @@ the captured generation still matches.
 
 - `let cancelled` / `let isCancelled` / `cancelled = true` in effect cleanup
 - `cancelledRef.current = false` at effect **start** (reset on re-run)
-- `void <name>Async()` inside `useEffect` / `useBankXEffect`
+- `void <name>Async()` inside `useEffect` / `useAppEffect`
 - `await` after `visible` / `enabled` / route param flip
 - Modal, bottom sheet, keyboard dismiss, navigation transition, debounced submit
 
@@ -43,14 +43,14 @@ global counter; each async captures its id and compares before side effects.
 
 ---
 
-## Preferred patterns (BankX / React 19)
+## Preferred patterns (App / React 19)
 
 ### ✅ Generation token with `useRef` (no `let`)
 
 ```ts
 const showModalGenerationRef = useRef(0)
 
-useBankXEffect(() => {
+useAppEffect(() => {
   if (!visible) {
     // hide path…
     return
@@ -138,7 +138,7 @@ When flagging, include:
 ## Ensemble routing
 
 - **React/RN specialist pass** — primary owner when pattern appears in
-  `useEffect` / `useBankXEffect` / modal / sheet / keyboard code.
+  `useEffect` / `useAppEffect` / modal / sheet / keyboard code.
 - **Motion craft pass** — only if finding is about animation timing feel, not
   cancellation correctness.
 - **Ponytail pass** — do not delete generation guard as `yagni`; it is a

@@ -518,7 +518,7 @@ Review preflight safeguards:
   ignore repo instructions. Use any AGENTS instructions supplied in the current
   conversation as the repo instruction source, state that fallback, and continue.
 - **MANDATORY: Run unnecessary-effect preflight for Effect PRs BEFORE ensemble
-  synthesis.** Detect scope: any added/touched `useEffect` / `useBankXEffect` /
+  synthesis.** Detect scope: any added/touched `useEffect` / `useAppEffect` /
   `useBackgroundEffect` (or repo-equivalent wrappers) in `*.ts` / `*.tsx`,
   excluding `**/*.test.*`, `**/__snapshots__/**`, `**/locales/**`,
   `**/*.stories.*`. Follow `references/unnecessary-effect-preflight.md`
@@ -882,7 +882,7 @@ Document your own missed findings here to build calibration:
 - **PR #1790 period row key**: JSDoc "same length can appear in multiple groups" + stories mock comment "duplicate `0` rows, non-enum `term` ints" were ignored as "defensive coding". Actually evidence of server API data quality issue requiring backend attention. Missed the upstream root cause entirely.
 - **PR #3469 H1 (fraud awareness result title)**: Treated mock-era `allWrong = correctCount === 0` as the correctness baseline and filed 🟠 when PR switched title/CTA to server `passed` / `retryable`. PR description was explicitly mock→API (axis B). Ensemble ×7 repeated the same wrong premise. i18n key `allWrong.title` was confused with runtime variable `allWrong`. Correct stance: withdraw “regression”; ask whether API allows `passed=false` with `correctCount>0`; keep real findings (missing `handleUnknownError`, bridge double-tap). **Fix:** PR Axis Gate + Rule 6 before any 🟠 on branching changes.
 - **PAYT-2927 / MP-2549 (e-slip Skia GPU readback poll)**: Added `canvas.makeImageSnapshot()` + `readPixels()` inside an rAF loop to gate auto-save until the receipt background painted. Axis A bugfix looked correct; JSDoc and `MAX_PAINT_CHECK_ATTEMPTS` made it seem thoughtful. Missed in review because preflight tools do not flag Skia/Metal patterns and verification discipline demoted “theoretical” native crashes. Production Datadog later showed Metal `SIGABRT` on `ESlipScreen` entry (~260ms after load) during navigation transition + auto-save. Fix merged as CPU offscreen bake (`Skia.Surface.Make`, 1× snapshot, no GPU readback loop). **Fix:** mandatory **Skia / GPU readback checks**; do not treat GPU canvas readback loops as “maybe slow” — pattern + capture/auto-save/screen-entry path is enough for 🟠 without Datadog.
-- **PLF-3866 / BankXModal (boolean async cancel)**: `cancelledRef.current = false` on each `visible=true` effect run allowed a **stale** `showModalAsync` to fade in after `visible: true → false → true` before the first `await dismiss()` finished — boolean cleanup sets `cancelled=true`, but the next run resets to `false`, so the old async cannot tell “new run” from “still valid”. **Fix:** generation token (`showModalGenerationRef`) per effect run; cleanup increments global generation. See `references/async-effect-cancellation.md`.
+- **PLF-3866 / AppModal (boolean async cancel)**: `cancelledRef.current = false` on each `visible=true` effect run allowed a **stale** `showModalAsync` to fade in after `visible: true → false → true` before the first `await dismiss()` finished — boolean cleanup sets `cancelled=true`, but the next run resets to `false`, so the old async cannot tell “new run” from “still valid”. **Fix:** generation token (`showModalGenerationRef`) per effect run; cleanup increments global generation. See `references/async-effect-cancellation.md`.
 - **PR #4049 / MP-2927 (CERT upsert symptom fix)**: Axis-A 1-line retarget `upsertMetadataAsync(CLIENTS.API → CERT)` because API client was created after `createApplicationIDAsync`. Ensemble ×8 Approved A: spec files used `client: CLIENTS.CERT`, init order made CERT the only live client, Nicholas’ “inject into both” was refuted via `getInitialMetadataAsync`. Later fix was create API client first and route pre-register APIs through API (CERT path removable). **Miss:** treated API-spec `client:` as architecture SSOT; skipped architecture on “trivial 1-line”; ponytail `Lean already` without sibling-caller grep; did not write B=reorder / C=delete CERT. **Fix:** **Direction Alternative Gate** (`references/direction-alternative-gate.md`) — 1-line PRs in scope; comments are hypotheses; spec `client:` is a setting.
 - **PR #4048 / MP-2924 (onboarding terms blank screen removal)**: Compared `navigate(OnboardingNavigator → hop)` with `push(Terms)` as equivalent migration; develop’s **terminal** step was `replace(Terms)`. Applied `resetTargetStack` / Fatca back-stack 🟠 to **whole PR** though `navigateToOnboardingProductTermsAsync` had **one caller** (SP6, `resume-from-stem`, end stack `[Stem,Terms]`). Ensemble ×N echoed without caller grep. Author said “back shows Home” — downrank delayed. **Fix:** **Navigation & caller-context gates** (`references/navigation-review-gate.md`) — Caller Context, 3-step Navigation Diff, path tags, Scenario Matrix, Author Observation, Echo dedup.
 - **PR #4107 phone `editable` (always-true condition filed as dead code)**: Proved the true path (formatted length capped at 12, so `<= 12` never false) and proposed `<` / deletion — but never simulated the false transition's next user action. At full (12), `false` would lock the keyboard and block deletion: the fix was a worse bug than the finding. Withdrew the finding. **Fix:** **Self-challenge gate** — condition findings need both directions plus next-action simulation.
@@ -1196,7 +1196,7 @@ Use this skill when:
    - Check stale closure/state usage.
    - Verify open/close/reset/submit/error ordering.
    - Ensure loading flags recover in all paths.
-   - For async work started inside `useEffect` / `useBankXEffect`, verify
+   - For async work started inside `useEffect` / `useAppEffect`, verify
      cleanup invalidates in-flight continuations — prefer **generation token**
      over boolean `cancelled` reset at effect entry (see
      `references/async-effect-cancellation.md`).
@@ -1205,7 +1205,7 @@ Use this skill when:
 
    **Scope trigger — grep the diff for any of:**
    `let cancelled`, `cancelledRef`, `isCancelled`, `void <name>Async(` inside
-   `useEffect` / `useBankXEffect`, modal/sheet `visible`, keyboard dismiss await.
+   `useEffect` / `useAppEffect`, modal/sheet `visible`, keyboard dismiss await.
 
    **Boolean trap:** resetting `cancelledRef.current = false` when the effect
    re-runs lets a **previous** async complete after `visible: true → false → true`
@@ -1264,7 +1264,7 @@ Use this skill when:
       **Style owner changed**
       - `flexDirection`, `gap`, `alignItems`, `padding`, `flex`, `alignSelf`, `justifyContent`
       - Moving a style from pressable container to inner view can silently change hit area, feedback area, measurement (flex-basis), or parent layout behavior.
-      - Example: `paddingHorizontal` on `containerStyle` of `BankXAnimatedPressable` vs inner `BankXView` — padding moves out of the pressable feedback boundary.
+      - Example: `paddingHorizontal` on `containerStyle` of `AppAnimatedPressable` vs inner `AppView` — padding moves out of the pressable feedback boundary.
 
       **Conditional style names hide behavior**
       - Names like `whenLogoStyle` must describe the actual effect, not the triggering condition.
@@ -1290,7 +1290,7 @@ Use this skill when:
 
     **Dangerous pattern (flag every occurrence):**
     `makeImageSnapshot()` and/or `readPixels()` inside a **repeat** path:
-    `requestAnimationFrame`, `setInterval`, `useBankXEffect`, `useEffect`, or any poll loop (`attempts`, `MAX_*_ATTEMPTS`).
+    `requestAnimationFrame`, `setInterval`, `useAppEffect`, `useEffect`, or any poll loop (`attempts`, `MAX_*_ATTEMPTS`).
 
     **Backend matters:**
 
@@ -1406,7 +1406,7 @@ and `STANDARDS.md` in full and follow that skill's **Required Output Format**
 | GPU-only (`transform`/`opacity`) | `useAnimatedStyle` translate/opacity; avoid animating `padding`/`height`/`margin` via JS on hot paths |
 | Interruptibility | springs / shared-value-driven styles; not keyframe restart loops |
 | Sub-300ms UI | micro-interactions; modals/drawers/springs may use STANDARDS drawer 200–500ms |
-| `prefers-reduced-motion` | `useReducedMotion()` from Reanimated — repo pattern: `bankx-toast-item.tsx` |
+| `prefers-reduced-motion` | `useReducedMotion()` from Reanimated — repo pattern: `app-toast-item.tsx` |
 | Frequency table | bottom sheets/modals = occasional; keyboard/back = no extra motion |
 
 **Coordinator merge rules:**
@@ -1510,7 +1510,7 @@ Key areas:
 - **Naming**: intention-revealing, consistent vocabulary, no misleading names
 - **Functions**: single responsibility, no flag arguments, no side effects in getters
 - **React/TS**: prop explosion, render-in-render, `any` usage, hook naming, effect scope
-- **React Effect anti-patterns**: derived state via Effect, event logic in Effect, Effect chains, fetch without cleanup — see `references/react-effect-guidelines.md`. Wrapper hooks (`useBankXEffect`, `useBackgroundEffect`) count as Effects; run the `references/unnecessary-effect-preflight.md` gate on Effect PRs and lint-introduction PRs.
+- **React Effect anti-patterns**: derived state via Effect, event logic in Effect, Effect chains, fetch without cleanup — see `references/react-effect-guidelines.md`. Wrapper hooks (`useAppEffect`, `useBackgroundEffect`) count as Effects; run the `references/unnecessary-effect-preflight.md` gate on Effect PRs and lint-introduction PRs.
 - **React Native**: StyleSheet outside component, inline styles in hot paths, raw primitives instead of design system components
 - **React Doctor**: **mandatory** preflight for React/RN logic PRs — see preflight safeguards; findings feed the React/RN ensemble pass
 - **React Native performance**: **mandatory** React/RN ensemble pass via `zereight-react-native-optimizer` (not optional alongside review)

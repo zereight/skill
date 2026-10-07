@@ -6,7 +6,7 @@
 
 ## Example 1 — 🟠 Major: bottomOffset too small (PR #2971)
 
-**Anchor:** `bankx-cta-aware-scroll-view.tsx` line 40
+**Anchor:** `app-cta-aware-scroll-view.tsx` line 40
 
 **Posted content:**
 
@@ -28,7 +28,7 @@
    field goes UNDER CTA                 field stays VISIBLE
 ```
 
-**Where:** `bankx-cta-aware-scroll-view.tsx:40`
+**Where:** `app-cta-aware-scroll-view.tsx:40`
 
 **When:**
 1. Open a screen with gradient CTA (CDD or Thai OCR).
@@ -39,32 +39,32 @@
 
 **Why it hurts:** The scroll gap is too small. The typing field can hide under the CTA.
 
-**How to fix:** Measure the full footer once with `BankXCTAContainer.onLayout`.
+**How to fix:** Measure the full footer once with `AppCTAContainer.onLayout`.
 
 ```typescript
-const handleCtaContainerLayout = useBankXCallback((event: LayoutChangeEvent) => {
+const handleCtaContainerLayout = useAppCallback((event: LayoutChangeEvent) => {
   setCtaFooterHeight(event.nativeEvent.layout.height)
 }, [])
 ```
 
-**한국어 요약:** 버튼 높이만 재서 스크롤 여백이 부족합니다. gradient·safe area 빠져 있어요. `BankXCTAContainer.onLayout`으로 CTA 전체 높이를 한 번만 측정해 주세요.
+**한국어 요약:** 버튼 높이만 재서 스크롤 여백이 부족합니다. gradient·safe area 빠져 있어요. `AppCTAContainer.onLayout`으로 CTA 전체 높이를 한 번만 측정해 주세요.
 ```
 
 ---
 
 ## Example 2 — 🟠 Major: wrong ScrollView type (PR #2971)
 
-**Anchor:** `bankx-cta-aware-scroll-view.tsx` line 55
+**Anchor:** `app-cta-aware-scroll-view.tsx` line 55
 
 **Posted content:**
 
 ```markdown
-⚠️ 🟠 Major — Type says BankXScrollView, but code uses another ScrollView
+⚠️ 🟠 Major — Type says AppScrollView, but code uses another ScrollView
 
 ```
   TYPE (what TS thinks)          CODE (what really runs)
   +------------------+           +------------------+
-  | BankXScrollView  |  ----X--> | KeyboardAware    |
+  | AppScrollView  |  ----X--> | KeyboardAware    |
   | - themedColor    |           |   ScrollView     |
   | - GH scroll      |           | (other props     |
   | - autoScroll     |           |  may be ignored) |
@@ -74,30 +74,30 @@ const handleCtaContainerLayout = useBankXCallback((event: LayoutChangeEvent) => 
     "looks safe"                    silent behavior change
 ```
 
-**Where:** `bankx-cta-aware-scroll-view.tsx:55`
+**Where:** `app-cta-aware-scroll-view.tsx:55`
 
-**When:** Use any screen that switched to `BankXCtaAwareScrollView`.
+**When:** Use any screen that switched to `AppCtaAwareScrollView`.
 
-**What is wrong:** Props come from `BankXScrollViewProps`, but we render `KeyboardAwareScrollView` with a plain spread. BankX scroll rules are not applied.
+**What is wrong:** Props come from `AppScrollViewProps`, but we render `KeyboardAwareScrollView` with a plain spread. App scroll rules are not applied.
 
 **Why it hurts:** Scroll feel, theme background, and header scroll can change with no error.
 
-**How to fix:** Use a narrow props type, or wrap real `BankXScrollView` inside.
+**How to fix:** Use a narrow props type, or wrap real `AppScrollView` inside.
 
 ```typescript
-type BankXCtaAwareScrollViewProps = KeyboardAwareScrollViewProps & {
+type AppCtaAwareScrollViewProps = KeyboardAwareScrollViewProps & {
   bottomOffset: NonNullable<KeyboardAwareScrollViewProps['bottomOffset']>
 }
 ```
 
-**한국어 요약:** 타입은 BankXScrollView인데 실제로는 다른 ScrollView를 씁니다. themedColor·스크롤 동작이 조용히 바뀔 수 있어요. props 타입을 좁히거나 BankXScrollView를 compose 해 주세요.
+**한국어 요약:** 타입은 AppScrollView인데 실제로는 다른 ScrollView를 씁니다. themedColor·스크롤 동작이 조용히 바뀔 수 있어요. props 타입을 좁히거나 AppScrollView를 compose 해 주세요.
 ```
 
 ---
 
 ## Example 3 — 🟠 Major: global CTA change (PR #2971)
 
-**Anchor:** `bankx-cta-container.tsx` line 50
+**Anchor:** `app-cta-container.tsx` line 50
 
 **Posted content:**
 
@@ -116,7 +116,7 @@ type BankXCtaAwareScrollViewProps = KeyboardAwareScrollViewProps & {
     scroll knows CTA                 scroll does NOT know CTA
 ```
 
-**Where:** `bankx-cta-container.tsx:50`
+**Where:** `app-cta-container.tsx:50`
 
 **When:** Open email edit, phone change, or OTP input (no CtaAware scroll).
 
@@ -140,7 +140,7 @@ type BankXCtaAwareScrollViewProps = KeyboardAwareScrollViewProps & {
   "prId": "2971",
   "content": "⚠️ 🟠 Major — We measure only the button...\n\n```\n  NOW (bad)...\n```\n\n**Where:** ...\n\n**한국어 요약:** 버튼 높이만 재서...",
   "inline": {
-    "path": "packages/design-system-components/src/view/bankx-cta-aware-scroll-view.tsx",
+    "path": "packages/design-system-components/src/view/app-cta-aware-scroll-view.tsx",
     "line": 40
   }
 }

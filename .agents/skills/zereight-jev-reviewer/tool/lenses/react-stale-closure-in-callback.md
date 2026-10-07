@@ -1,7 +1,7 @@
 ---
 name: react-stale-closure-in-callback
 files: ["**/*.tsx", "**/*.ts"]
-hunk_regex: "(useBankXCallback|useCallback|useMemo)\\s*\\([\\s\\S]{0,600}?\\[\\s*\\]"
+hunk_regex: "(useAppCallback|useCallback|useMemo)\\s*\\([\\s\\S]{0,600}?\\[\\s*\\]"
 description: A memoized callback reads state or props but its dependency list is empty or incomplete
 true: The callback body reads a changing value that is missing from the dependency array
 false: The values read are refs, setters, or constants, or the stale value is intended

@@ -130,7 +130,7 @@ rubric만으로 등급을 정한다. 기기에서 직접 확인해야 하는 시
   비교용으로 이전에 deepseek 경유(`jev-router`)는 86초 / $0.086 / 후보 4건이었다.
 - PR #4629(2026-10-07): Jev는 finding 0건이었고, 사람 리뷰가 찾은 세 지적(소비 화면 다국어·큰 글씨,
   diff 밖 이중 상수, 형제 컴포넌트 스코프)은 모두 diff 밖 코드에 근거가 있었다. 이웃 수집은 이 세 근거 파일
-  (필터 화면 3개를 포함한 소비 화면 6곳, `bankx-basic-capsule-tab.tsx`, `bankx-scrollable-capsule-tab-item.tsx`)을
+  (필터 화면 3개를 포함한 소비 화면 6곳, `app-basic-capsule-tab.tsx`, `app-scrollable-capsule-tab-item.tsx`)을
   모두 수집한다. 파일당 약 0.3초다.
 - 이웃 수집은 정적 import만 따라간다. 워크스페이스 `package.json`의 이름으로 alias를 해석하므로
   `@/` 같은 bundler 전용 alias, 동적 경로, DI 바인딩, navigation 이름 기반 참조는 놓친다.
