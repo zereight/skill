@@ -9,6 +9,7 @@ const DEFAULT_DIMENSIONS = [
   ["reliability", "Reliability", "Rel"],
   ["compatibility", "Compatibility", "Compat"],
   ["testGap", "Test gap", "Tests"],
+  ["pattern", "Lens pattern", "Lens"],
 ];
 
 function dimensionsFor(report) {

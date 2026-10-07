@@ -1,5 +1,6 @@
 // Change-review judgments. Every call is narrow and receives patch evidence.
 import { choice, noul, score } from "@typesafe-ai/sdk";
+import { matchLenses } from "../adapters/lenses.ts";
 import { createSystemOneClient } from "../adapters/system-one-factory.ts";
 import {
   BLOCKING_SEVERITY,
@@ -36,9 +37,24 @@ export async function screenFile(
   file: ChangedFile,
   changedTests: ChangedFile[],
 ): Promise<Screening<ChangedFile>> {
+  const lenses = matchLenses(file.path, file.patch);
+  const lensQuestions = Object.fromEntries(
+    lenses.map((lens) => [
+      lensKey(lens.name),
+      noul(
+        {
+          question: "Does file.patch directly exhibit this bug pattern: " + lens.description + "?",
+          inspect: "file.patch",
+          focus: "Added or modified lines that match the pattern",
+        },
+        { true: { what: lens.trueWhen }, false: { what: lens.falseWhen } },
+      ),
+    ]),
+  );
   const response = await client.systemOne({
     state: { file, changedTests },
     questions: {
+      ...lensQuestions,
       correctness: noul(
         {
           question: "Does file.patch directly support that this change likely introduces incorrect runtime behavior?",
@@ -122,6 +138,13 @@ export async function screenFile(
     },
   });
 
+  const answers = response.answers as Record<string, { noul: number }>;
+  const lensHits = lenses.map((lens) => ({
+    name: lens.name,
+    description: lens.description,
+    ref: lens.ref,
+    probability: answers[lensKey(lens.name)].noul,
+  }));
   return {
     file,
     probabilities: {
@@ -130,8 +153,14 @@ export async function screenFile(
       reliability: response.answers.reliability.noul,
       compatibility: response.answers.compatibility.noul,
       testGap: response.answers.testGap.noul,
+      pattern: Math.max(0, ...lensHits.map((hit) => hit.probability)),
     },
+    lenses: lensHits,
   };
+}
+
+function lensKey(name: string): string {
+  return "lens_" + name.replace(/[^a-zA-Z0-9]+/g, "_");
 }
 
 export async function profileFile(
@@ -169,7 +198,7 @@ export async function locateSignal(
 
   const suspectedConcern = {
     dimension: signal.dimension,
-    definition: dimensions[signal.dimension],
+    definition: signal.lensDescription ?? dimensions[signal.dimension],
   };
   const location = await client.systemOne({
     state: {

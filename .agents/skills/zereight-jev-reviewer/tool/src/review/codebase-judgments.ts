@@ -144,6 +144,7 @@ export async function screenSourceFile(
       reliability: response.answers.reliability.noul,
       compatibility: response.answers.compatibility.noul,
       testGap: response.answers.testGap.noul,
+      pattern: 0,
     });
   }
 
@@ -155,6 +156,7 @@ export async function screenSourceFile(
       reliability: Math.max(...results.map((result) => result.reliability)),
       compatibility: Math.max(...results.map((result) => result.compatibility)),
       testGap: Math.max(...results.map((result) => result.testGap)),
+      pattern: 0,
     },
   };
 }

@@ -1,0 +1,10 @@
+zereight-jev-reviewer
+
+This skill vendors jev-review (MIT), https://github.com/devagrawal09/jev-review, see tool/LICENSE.
+
+The lens files tool/lenses/react-fetch-in-effect-without-abort.md,
+react-use-effect-missing-cleanup.md, react-stale-closure-in-callback.md,
+async-click-double-fire-race.md, async-floating-promise.md and pii-in-url-or-log.md are
+rewritten from lenses in OpenQodex, https://github.com/openqodex/openqodex
+(Apache-2.0, Copyright Qodex). The bodies were reduced to Jev questions and the judging
+rules point to zereight-review references. Licence: https://www.apache.org/licenses/LICENSE-2.0

@@ -19,16 +19,36 @@ export type Hunk = {
   patch: string;
 };
 
+// A bug pattern from tool/lenses. `ref` names the zereight-review reference holding the judging rules.
+export type Lens = {
+  name: string;
+  files: string[];
+  hunkRegex: RegExp | null;
+  description: string;
+  trueWhen: string;
+  falseWhen: string;
+  ref: string;
+};
+
+export type LensHit = { name: string; description: string; ref: string; probability: number };
+
 export type Screening<File extends { path: string }> = {
   file: File;
   probabilities: Record<Dimension, number>;
+  lenses?: LensHit[];
 };
 
 export type Signal<File extends { path: string }> = {
   file: File;
   dimension: Dimension;
   probability: number;
+  lens?: string;
+  lensDescription?: string;
+  lensRef?: string;
 };
+
+// A file or check the review did not cover; finalize requires an explicit disposition for each.
+export type Skipped = { id?: string; file: string; reason: string };
 
 export type Finding<File extends { path: string }> = Signal<File> & {
   line: number;
@@ -49,6 +69,21 @@ export type FileProfile = {
   reviewPriority: number;
   reviewPriorityConfidence: number;
 };
+
+// Code around a changed file that its patch does not show.
+export type Neighbors = {
+  importers: string[];
+  transitiveImporters: string[];
+  imports: string[];
+  siblings: string[];
+};
+
+export type ReviewTarget = {
+  id?: string;
+  file: string;
+  maxProbability: number;
+  topDimension: Dimension;
+} & Neighbors;
 
 export type ReviewReport = {
   mode: ReviewMode;
@@ -73,7 +108,15 @@ export type ReviewReport = {
     locatedFindings: number;
     routedFindings: number;
   };
-  findings: Array<Omit<Finding<{ path: string }>, "file"> & { file: string }>;
+  findings: Array<Omit<Finding<{ path: string }>, "file"> & { file: string; id?: string }>;
+  skipped?: Skipped[];
+  notes?: string[];
+  // Set by the change review so jev_finalize can verify lines with `zer`.
+  base?: string | null;
+  repoRoot?: string;
+  scopes?: Record<string, boolean>;
+  // Absent in reports saved before the generative review step existed.
+  reviewTargets?: ReviewTarget[];
 };
 
 // Deliberately loose so a report saved by an older version remains viewable.
